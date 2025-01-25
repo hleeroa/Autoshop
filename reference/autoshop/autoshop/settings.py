@@ -82,7 +82,7 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'autoshop',
-        'USER': 'postgres',
+        'USER': 'user',
         'PASSWORD': 'your_password',
     }
 
@@ -135,8 +135,8 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
 EMAIL_HOST = 'smtp.mail.ru'
 
-EMAIL_HOST_USER = 'your.mail_here@mail.ru'
-EMAIL_HOST_PASSWORD = 'your_host_password'
+EMAIL_HOST_USER = 'example@mail.com'
+EMAIL_HOST_PASSWORD = '123456dyhn2wskjk'
 EMAIL_PORT = '465'
 EMAIL_USE_SSL = True
 SERVER_EMAIL = EMAIL_HOST_USER
@@ -159,3 +159,7 @@ REST_FRAMEWORK = {
 }
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+CELERY_BROKER_URL = 'redis://localhost:6379'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379'

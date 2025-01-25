@@ -2,47 +2,42 @@ from typing import Type
 
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
-from django.db.models.signals import post_save
-from django.dispatch import receiver, Signal
-from django_rest_passwordreset.signals import reset_password_token_created
+from celery import shared_task
+from django_rest_passwordreset.views import generate_token_for_email
 
 from backend.models import ConfirmEmailToken, User
 
-new_user_registered = Signal()
 
-new_order = Signal()
-
-
-@receiver(reset_password_token_created)
-def password_reset_token_created(sender, instance, reset_password_token, **kwargs):
+@shared_task()
+def password_reset_token_created(email):
     """
-    Отправляем письмо с токеном для сброса пароля
+    Ускорено отправляем письмо с токеном для сброса пароля
+    с помощью celery
     When a token is created, an e-mail needs to be sent to the user
-    :param sender: View Class that sent the signal
-    :param instance: View Instance that sent the signal
-    :param reset_password_token: Token Model Object
-    :param kwargs:
+    :param email: an e-mail address for password resetting
     :return:
     """
-    # send an e-mail to the user
 
+    token = generate_token_for_email(email=email)
+    # send an e-mail to the user
     msg = EmailMultiAlternatives(
         # title:
-        f"Password Reset Token for {reset_password_token.user}",
+        f"Password Reset Token for {email}",
         # message:
-        reset_password_token.key,
+        token,
         # from:
         settings.EMAIL_HOST_USER,
         # to:
-        [reset_password_token.user.email]
+        [email]
     )
     msg.send()
 
 
-@receiver(post_save, sender=User)
-def new_user_registered_signal(sender: Type[User], instance: User, created: bool, **kwargs):
+@shared_task()
+def new_user_registered(sender: Type[User], instance: User, created: bool, **kwargs):
     """
-     отправляем письмо с подтрердждением почты
+    Ускорено отправляем письмо с подтверждением почты
+    с помощью celery
     """
     if created and not instance.is_active:
         # send an e-mail to the user
@@ -61,10 +56,11 @@ def new_user_registered_signal(sender: Type[User], instance: User, created: bool
         msg.send()
 
 
-@receiver(new_order)
-def new_order_signal(user_id, **kwargs):
+@shared_task()
+def new_order(user_id, **kwargs):
     """
-    отправяем письмо при изменении статуса заказа
+    Ускорено отправляем письмо при изменении статуса заказа
+    с помощью celery
     """
     # send an e-mail to the user
     user = User.objects.get(id=user_id)

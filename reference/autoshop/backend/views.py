@@ -1,71 +1,25 @@
-from django.contrib.auth.views import LoginView
+from django.views.generic import FormView, TemplateView
 from rest_framework.request import Request
-from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.core.validators import URLValidator
 from django.db import IntegrityError
 from django.db.models import Q, Sum, F
 from django.http import JsonResponse
+from django.shortcuts import render
 from requests import get
-from rest_framework.authtoken.models import Token
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from json import loads as load_json
+from json import loads
 from yaml import load as load_yaml, Loader
 
 from backend.models import Shop, Category, Product, ProductInfo, Parameter, ProductParameter, Order, OrderItem, \
     Contact, ConfirmEmailToken
 from backend.serializers import UserSerializer, CategorySerializer, ShopSerializer, ProductInfoSerializer, \
     OrderItemSerializer, OrderSerializer, ContactSerializer
-from backend.signals import new_user_registered, new_order
-
-
-class RegisterAccount(APIView):
-    """
-    Для регистрации покупателей
-    """
-
-    # Регистрация методом POST
-
-    def post(self, request, *args, **kwargs):
-        """
-            Process a POST request and create a new user.
-
-            Args:
-                request (Request): The Django request object.
-
-            Returns:
-                JsonResponse: The response indicating the status of the operation and any errors.
-            """
-        # проверяем обязательные аргументы
-        if {'first_name', 'last_name', 'email', 'password', 'company', 'position', 'type'}.issubset(request.data):
-
-            # проверяем пароль на сложность
-            sad = 'asd'
-            try:
-                validate_password(request.data['password'])
-            except Exception as password_error:
-                error_array = []
-                # noinspection PyTypeChecker
-                for item in password_error:
-                    error_array.append(item)
-                return JsonResponse({'Status': False, 'Errors': {'password': error_array}})
-            else:
-                # проверяем данные для уникальности имени пользователя
-
-                user_serializer = UserSerializer(data=request.data)
-                if user_serializer.is_valid():
-                    # сохраняем пользователя
-                    user = user_serializer.save()
-                    user.set_password(request.data['password'])
-                    user.save()
-                    return JsonResponse({'Status': True})
-                else:
-                    return JsonResponse({'Status': False, 'Errors': user_serializer.errors})
-
-        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+from backend.tasks import new_order
+from backend.forms import ResetPasswordForm, RegisterAccountForm, LoginAccountForm
 
 
 class ConfirmAccount(APIView):
@@ -145,7 +99,6 @@ class AccountDetails(APIView):
         # проверяем обязательные аргументы
 
         if 'password' in request.data:
-            errors = {}
             # проверяем пароль на сложность
             try:
                 validate_password(request.data['password'])
@@ -167,34 +120,18 @@ class AccountDetails(APIView):
             return JsonResponse({'Status': False, 'Errors': user_serializer.errors})
 
 
-class LoginAccount(APIView):
+class LoginAccount(FormView):
     """
     Класс для авторизации пользователей
     """
-
     # Авторизация методом POST
-    def post(self, request, *args, **kwargs):
-        """
-                Authenticate a user.
+    template_name = 'login.html'
+    form_class = LoginAccountForm
+    success_url = 'success'
 
-                Args:
-                    request (Request): The Django request object.
-
-                Returns:
-                    JsonResponse: The response indicating the status of the operation and any errors.
-                """
-        if {'email', 'password'}.issubset(request.data):
-            user = authenticate(request, username=request.data['email'], password=request.data['password'])
-
-            if user is not None:
-                if user.is_active:
-                    token, _ = Token.objects.get_or_create(user=user)
-
-                    return JsonResponse({'Status': True, 'Token': token.key})
-
-            return JsonResponse({'Status': False, 'Errors': 'Не удалось авторизовать'})
-
-        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+    def form_valid(self, form):
+        form.login()
+        return super().form_valid(form)
 
 
 class CategoryView(ListAPIView):
@@ -244,7 +181,7 @@ class ProductInfoView(APIView):
         if category_id:
             query = query & Q(product__category_id=category_id)
 
-        # фильтруем и отбрасываем дуликаты
+        # фильтруем и отбрасываем дубликаты
         queryset = ProductInfo.objects.filter(
             query).select_related(
             'shop', 'product__category').prefetch_related(
@@ -306,11 +243,10 @@ class BasketView(APIView):
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
 
         items_sting = request.data.get('items')
-        print(items_sting)
         if items_sting:
-            print(type(items_sting))
             try:
-                items_dict = load_json(items_sting)
+                items_dict = loads(items_sting)
+                print(items_dict)
             except ValueError:
                 return JsonResponse({'Status': False, 'Errors': 'Неверный формат запроса'})
             else:
@@ -323,6 +259,7 @@ class BasketView(APIView):
                         try:
                             serializer.save()
                         except IntegrityError as error:
+                            print(error)
                             return JsonResponse({'Status': False, 'Errors': str(error)})
                         else:
                             objects_created += 1
@@ -381,7 +318,7 @@ class BasketView(APIView):
         items_sting = request.data.get('items')
         if items_sting:
             try:
-                items_dict = load_json(items_sting)
+                items_dict = loads(items_sting)
             except ValueError:
                 return JsonResponse({'Status': False, 'Errors': 'Неверный формат запроса'})
             else:
@@ -661,7 +598,6 @@ class ContactView(APIView):
         if 'id' in request.data:
             if request.data['id'].isdigit():
                 contact = Contact.objects.filter(id=request.data['id'], user_id=request.user.id).first()
-                print(contact)
                 if contact:
                     serializer = ContactSerializer(contact, data=request.data, partial=True)
                     if serializer.is_valid():
@@ -675,7 +611,7 @@ class ContactView(APIView):
 
 class OrderView(APIView):
     """
-    Класс для получения и размешения заказов пользователями
+    Класс для получения и размещения заказов пользователями
     Methods:
     - get: Retrieve the details of a specific order.
     - post: Create a new order.
@@ -729,12 +665,51 @@ class OrderView(APIView):
                         user_id=request.user.id, id=request.data['id']).update(
                         contact_id=request.data['contact'],
                         state='new')
-                except IntegrityError as error:
-                    print(error)
+                except IntegrityError:
                     return JsonResponse({'Status': False, 'Errors': 'Неправильно указаны аргументы'})
                 else:
                     if is_updated:
-                        new_order.send(sender=self.__class__, user_id=request.user.id)
+                        new_order.delay(user_id=request.user.id)
                         return JsonResponse({'Status': True})
 
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+
+class HomeView(APIView):
+    """
+    Class for having a cool picture on the main page
+    """
+    def get(self, request, *args, **kwargs):
+        return render(request, 'main.html')
+
+
+class ResetPasswordFormView(FormView):
+    """
+    Class for resetting password
+    """
+    template_name = 'reset_password.html'
+    form_class = ResetPasswordForm
+    success_url = 'success'
+
+    def form_valid(self, form):
+        form.send_reset_token()
+        return super().form_valid(form)
+
+
+class SuccessView(TemplateView):
+    """
+    Class for success page
+    """
+    template_name = 'success.html'
+
+
+class RegisterAccountView(FormView):
+    """
+    Class for signing up users
+    """
+    template_name = 'register.html'
+    form_class = RegisterAccountForm
+    success_url = 'login'
+
+    def form_valid(self, form):
+        form.send_reg_token()
+        return super().form_valid(form)
