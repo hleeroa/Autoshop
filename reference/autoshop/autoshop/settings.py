@@ -75,7 +75,7 @@ WSGI_APPLICATION = 'autoshop.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/2.2/ref/settings/#databases
 
-#TODO Ввести данные для подключению к базе данных Postgres или заменить на sqlite3:
+#TODO Ввести данные для подключению к базе данных Postgres:
 
 DATABASES = {
 
