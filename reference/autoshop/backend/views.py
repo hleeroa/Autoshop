@@ -1,4 +1,5 @@
 from django.views.generic import FormView, TemplateView
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework.request import Request
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
@@ -19,6 +20,7 @@ from backend.models import Shop, Category, Product, ProductInfo, Parameter, Prod
 from backend.serializers import UserSerializer, CategorySerializer, ShopSerializer, ProductInfoSerializer, \
     OrderItemSerializer, OrderSerializer, ContactSerializer
 from backend.tasks import new_order
+from backend.responses import EMAIL_CONFIRMATION_RESPONSE_EXAMPLES
 from backend.forms import ResetPasswordForm, RegisterAccountForm, LoginAccountForm
 
 
@@ -30,14 +32,14 @@ class ConfirmAccount(APIView):
     # Регистрация методом POST
     def post(self, request, *args, **kwargs):
         """
-                Подтверждает почтовый адрес пользователя.
+        Подтверждает почтовый адрес пользователя.
 
-                Args:
-                - request (Request): The Django request object.
+        Args:
+        - request (Request): The Django request object.
 
-                Returns:
-                - JsonResponse: The response indicating the status of the operation and any errors.
-                """
+        Returns:
+        - JsonResponse: The response indicating the status of the operation and any errors.
+        """
         # проверяем обязательные аргументы
         if {'email', 'token'}.issubset(request.data):
 
@@ -710,6 +712,9 @@ class RegisterAccountView(FormView):
     form_class = RegisterAccountForm
     success_url = 'login'
 
+    @extend_schema(
+        responses={200, "Success"}
+    )
     def form_valid(self, form):
         form.send_reg_token()
         return super().form_valid(form)

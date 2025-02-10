@@ -4,7 +4,7 @@ from rest_framework import serializers
 from backend.models import User, Category, Shop, ProductInfo, Product, ProductParameter, OrderItem, Order, Contact
 
 
-class ContactSerializer(serializers.ModelSerializer):
+class ContactSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Contact
         fields = ('id', 'city', 'street', 'house', 'structure', 'building', 'apartment', 'user', 'phone')
@@ -14,8 +14,8 @@ class ContactSerializer(serializers.ModelSerializer):
         }
 
 
-class UserSerializer(serializers.ModelSerializer):
-    contacts = ContactSerializer(read_only=True, many=True)
+class UserSerializer(serializers.HyperlinkedModelSerializer):
+    contacts = ContactSerializer(read_only=True, many=True, help_text='Адрес и телефон пользователя.')
 
     class Meta:
         model = User
@@ -23,39 +23,41 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = ('id',)
 
 
-class CategorySerializer(serializers.ModelSerializer):
+class CategorySerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Category
         fields = ('id', 'name',)
         read_only_fields = ('id',)
 
 
-class ShopSerializer(serializers.ModelSerializer):
+class ShopSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Shop
         fields = ('id', 'name', 'state',)
         read_only_fields = ('id',)
 
 
-class ProductSerializer(serializers.ModelSerializer):
-    category = serializers.StringRelatedField()
+class ProductSerializer(serializers.HyperlinkedModelSerializer):
+    category = serializers.StringRelatedField(help_text='Категория продукта. Телефон, еда или транспортное средство')
 
     class Meta:
         model = Product
         fields = ('name', 'category',)
 
 
-class ProductParameterSerializer(serializers.ModelSerializer):
-    parameter = serializers.StringRelatedField()
+class ProductParameterSerializer(serializers.HyperlinkedModelSerializer):
+    parameter = serializers.StringRelatedField(help_text='Отдельный критерий описания. Форма, '
+                                                         'разрешение экрана, память')
 
     class Meta:
         model = ProductParameter
         fields = ('parameter', 'value',)
 
 
-class ProductInfoSerializer(serializers.ModelSerializer):
-    product = ProductSerializer(read_only=True)
-    product_parameters = ProductParameterSerializer(read_only=True, many=True)
+class ProductInfoSerializer(serializers.HyperlinkedModelSerializer):
+    product = ProductSerializer(read_only=True, help_text='Конкретный продукт.')
+    product_parameters = ProductParameterSerializer(read_only=True, many=True, help_text='Список параметров. '
+                                                                                         'Описывают продукт.')
 
     class Meta:
         model = ProductInfo
@@ -63,7 +65,7 @@ class ProductInfoSerializer(serializers.ModelSerializer):
         read_only_fields = ('id',)
 
 
-class OrderItemSerializer(serializers.ModelSerializer):
+class OrderItemSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = OrderItem
         fields = ('id', 'product_info', 'quantity', 'order',)
@@ -73,15 +75,15 @@ class OrderItemSerializer(serializers.ModelSerializer):
         }
 
 
-class OrderItemCreateSerializer(OrderItemSerializer):
-    product_info = ProductInfoSerializer(read_only=True)
+class OrderItemCreateSerializer(serializers.HyperlinkedModelSerializer):
+    product_info = ProductInfoSerializer(read_only=True, help_text='Продукт и его описание.')
 
 
-class OrderSerializer(serializers.ModelSerializer):
-    ordered_items = OrderItemCreateSerializer(read_only=True, many=True)
+class OrderSerializer(serializers.HyperlinkedModelSerializer):
+    ordered_items = OrderItemCreateSerializer(read_only=True, many=True, help_text='Список продуктов в одном заказе.')
 
-    total_sum = serializers.IntegerField()
-    contact = ContactSerializer(read_only=True)
+    total_sum = serializers.IntegerField(help_text='Итоговая сумма заказа.')
+    contact = ContactSerializer(read_only=True, help_text='Телефон и адрес заказчика.')
 
     class Meta:
         model = Order

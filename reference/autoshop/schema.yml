@@ -1,0 +1,518 @@
+openapi: 3.0.3
+info:
+  title: Autoshop
+  version: 1.2.2
+  description: Приложение для автоматизации закупок
+paths:
+  /:
+    get:
+      operationId: root_retrieve
+      description: Class for having a cool picture on the main page
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/v1/basket:
+    get:
+      operationId: api_v1_basket_retrieve
+      description: |-
+        Retrieve the items in the user's basket.
+
+        Args:
+        - request (Request): The Django request object.
+
+        Returns:
+        - Response: The response containing the items in the user's basket.
+      tags:
+      - api
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+    post:
+      operationId: api_v1_basket_create
+      description: |-
+        Add an items to the user's basket.
+
+        Args:
+        - request (Request): The Django request object.
+
+        Returns:
+        - JsonResponse: The response indicating the status of the operation and any errors.
+      tags:
+      - api
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+    put:
+      operationId: api_v1_basket_update
+      description: |-
+        Update the items in the user's basket.
+
+        Args:
+        - request (Request): The Django request object.
+
+        Returns:
+        - JsonResponse: The response indicating the status of the operation and any errors.
+      tags:
+      - api
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+    delete:
+      operationId: api_v1_basket_destroy
+      description: |-
+        Remove  items from the user's basket.
+
+        Args:
+        - request (Request): The Django request object.
+
+        Returns:
+        - JsonResponse: The response indicating the status of the operation and any errors.
+      tags:
+      - api
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '204':
+          description: No response body
+  /api/v1/categories:
+    get:
+      operationId: api_v1_categories_list
+      description: Класс для просмотра категорий
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - api
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCategoryList'
+          description: ''
+  /api/v1/order:
+    get:
+      operationId: api_v1_order_retrieve
+      description: |-
+        Retrieve the details of user orders.
+
+        Args:
+        - request (Request): The Django request object.
+
+        Returns:
+        - Response: The response containing the details of the order.
+      tags:
+      - api
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+    post:
+      operationId: api_v1_order_create
+      description: |-
+        Put an order and send a notification.
+
+        Args:
+        - request (Request): The Django request object.
+
+        Returns:
+        - JsonResponse: The response indicating the status of the operation and any errors.
+      tags:
+      - api
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/v1/partner/orders:
+    get:
+      operationId: api_v1_partner_orders_retrieve
+      description: |-
+        Retrieve the orders associated with the authenticated partner.
+
+        Args:
+        - request (Request): The Django request object.
+
+        Returns:
+        - Response: The response containing the orders associated with the partner.
+      tags:
+      - api
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/v1/partner/state:
+    get:
+      operationId: api_v1_partner_state_retrieve
+      description: |-
+        Retrieve the state of the partner.
+
+        Args:
+        - request (Request): The Django request object.
+
+        Returns:
+        - Response: The response containing the state of the partner.
+      tags:
+      - api
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+    post:
+      operationId: api_v1_partner_state_create
+      description: |-
+        Update the state of a partner.
+
+        Args:
+        - request (Request): The Django request object.
+
+        Returns:
+        - JsonResponse: The response indicating the status of the operation and any errors.
+      tags:
+      - api
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/v1/partner/update:
+    post:
+      operationId: api_v1_partner_update_create
+      description: |-
+        Update the partner price list information.
+
+        Args:
+        - request (Request): The Django request object.
+
+        Returns:
+        - JsonResponse: The response indicating the status of the operation and any errors.
+      tags:
+      - api
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/v1/products:
+    get:
+      operationId: api_v1_products_retrieve
+      description: |-
+        Retrieve the product information based on the specified filters.
+
+        Args:
+        - request (Request): The Django request object.
+
+        Returns:
+        - Response: The response containing the product information.
+      tags:
+      - api
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/v1/shops:
+    get:
+      operationId: api_v1_shops_list
+      description: Класс для просмотра списка магазинов
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - api
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedShopList'
+          description: ''
+  /api/v1/user/contact:
+    get:
+      operationId: api_v1_user_contact_retrieve
+      description: |-
+        Retrieve the contact information of the authenticated user.
+
+        Args:
+        - request (Request): The Django request object.
+
+        Returns:
+        - Response: The response containing the contact information.
+      tags:
+      - api
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+    post:
+      operationId: api_v1_user_contact_create
+      description: |-
+        Create a new contact for the authenticated user.
+
+        Args:
+        - request (Request): The Django request object.
+
+        Returns:
+        - JsonResponse: The response indicating the status of the operation and any errors.
+      tags:
+      - api
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+    put:
+      operationId: api_v1_user_contact_update
+      description: |-
+        A class for managing contact information.
+
+        Methods:
+        - get: Retrieve the contact information of the authenticated user.
+        - post: Create a new contact for the authenticated user.
+        - put: Update the contact information of the authenticated user.
+        - delete: Delete the contact of the authenticated user.
+
+        Attributes:
+        - None
+      tags:
+      - api
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+    delete:
+      operationId: api_v1_user_contact_destroy
+      description: |-
+        Delete the contact of the authenticated user.
+
+        Args:
+        - request (Request): The Django request object.
+
+        Returns:
+        - JsonResponse: The response indicating the status of the operation and any errors.
+      tags:
+      - api
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '204':
+          description: No response body
+  /api/v1/user/details:
+    get:
+      operationId: api_v1_user_details_retrieve
+      description: |-
+        Retrieve the details of the authenticated user.
+
+        Args:
+        - request (Request): The Django request object.
+
+        Returns:
+        - Response: The response containing the details of the authenticated user.
+      tags:
+      - api
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+    post:
+      operationId: api_v1_user_details_create
+      description: |-
+        Update the account details of the authenticated user.
+
+        Args:
+        - request (Request): The Django request object.
+
+        Returns:
+        - JsonResponse: The response indicating the status of the operation and any errors.
+      tags:
+      - api
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/v1/user/password_reset/confirm:
+    post:
+      operationId: api_v1_user_password_reset_confirm_create
+      description: An Api View which provides a method to reset a password based on
+        a unique token
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordToken'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PasswordToken'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PasswordToken'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PasswordToken'
+          description: ''
+  /api/v1/user/register/confirm:
+    post:
+      operationId: api_v1_user_register_confirm_create
+      description: Посылает письмо с токеном для подтверждения аккаунта. В базе данных
+        помечает пользователя как is_active=True.
+      summary: Подтверждение почты
+      tags:
+      - api
+      security:
+      - tokenAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+                description: Unspecified response body
+          description: ''
+components:
+  schemas:
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Название
+          maxLength: 40
+      required:
+      - id
+      - name
+    PaginatedCategoryList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Category'
+    PaginatedShopList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Shop'
+    PasswordToken:
+      type: object
+      properties:
+        password:
+          type: string
+        token:
+          type: string
+      required:
+      - password
+      - token
+    Shop:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Название
+          maxLength: 50
+        state:
+          type: boolean
+          title: Статус получения заказов
+      required:
+      - id
+      - name
+  securitySchemes:
+    tokenAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: Token-based authentication with required prefix "Token"
