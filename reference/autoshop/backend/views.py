@@ -1,5 +1,6 @@
 from django.views.generic import FormView, TemplateView
-from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse, OpenApiExample, OpenApiRequest
+from drf_spectacular.utils import OpenApiResponse, OpenApiExample, OpenApiRequest
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework.request import Request
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
@@ -1127,6 +1128,9 @@ class RegisterAccountView(FormView):
     form_class = RegisterAccountForm
     success_url = 'login'
 
+    @extend_schema(
+        responses={200, "Success"}
+    )
     def form_valid(self, form):
         form.send_reg_token()
         return super().form_valid(form)
