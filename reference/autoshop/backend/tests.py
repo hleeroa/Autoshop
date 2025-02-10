@@ -1,4 +1,5 @@
 import os
+
 import django
 import yaml
 import pytest
@@ -7,7 +8,7 @@ from rest_framework.test import APIClient
 from backend.models import User, ConfirmEmailToken
 from json import dumps
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'autoshop.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', '../autoshop.settings')
 django.setup()
 
 
@@ -66,6 +67,24 @@ class TestConfirmAccount:
         response = api_client.post(url, data)
         assert response.status_code == 200
         assert response.json() == {'Status': False, 'Errors': 'Неправильно указан токен или email'}
+
+    def test_confirm_account_throttling(self, api_client):
+        """
+        Checks the behavior when more requests that allowed is made.
+        :param api_client: an instance of APIClient. Is used to make HTTP requests in tests.
+        :return:
+        """
+        user = User.objects.create_user(username="test", email="test@example.com", is_active=False)
+        ConfirmEmailToken.objects.create(user=user, key="token")
+        url = reverse("backend:user-register-confirm")
+        data = {"email": "test@example.com", "token": "token"}
+
+        for i in range(1, 2):
+            response = api_client.post(url, data)
+            assert response.status_code == 200
+        response = api_client.post(url, data)
+        assert response.status_code == 429
+        assert response.json() == {'detail': 'Request was throttled. Expected available in 60 seconds.'}
 
 
 @pytest.mark.django_db
@@ -149,6 +168,26 @@ class TestShopView:
         assert response.status_code == 200
         assert isinstance(response.data, list)
 
+    def test_get_shops_authenticated_throttling(self, api_client):
+        """
+        Tests throttling of an authenticated user.
+        :param api_client: an instance of APIClient. Is used to make HTTP requests in tests
+        :return:
+        """
+        user = User.objects.create_user(username="toe", email="toe@example.com", is_active=True)
+        ConfirmEmailToken.objects.create(user=user, key="text")
+        url = reverse("backend:shops")
+        api_client.force_authenticate(user)
+
+        for i in range(1, 41):
+            response = api_client.get(url)
+
+            assert response.status_code == 200
+
+        response = api_client.get(url)
+        assert response.status_code == 429
+        assert response.json() == {'detail': 'Request was throttled. Expected available in 60 seconds.'}
+
 
 @pytest.mark.django_db
 class TestProductInfoView:
@@ -184,7 +223,6 @@ class TestBasketView:
         print(f'{response=}')
 
         assert response.status_code in [200, 201]
-
 
 @pytest.mark.django_db
 class TestPartnerUpdate:

@@ -1,4 +1,5 @@
 from django.views.generic import FormView, TemplateView
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse, OpenApiExample, OpenApiRequest
 from rest_framework.request import Request
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
@@ -26,18 +27,41 @@ class ConfirmAccount(APIView):
     """
     Класс для подтверждения почтового адреса
     """
+    throttle_scope = 'confirm'
 
+    @extend_schema(
+        summary="Подтверждение почты",
+        parameters=[
+            OpenApiParameter("email", description="Email пользователя"),
+            OpenApiParameter("token", description="Токен подтверждения почты"),
+        ],
+        description="Подтверждает email пользователя, делая его активным (is_active=True).",
+        responses={200: OpenApiResponse(response=OpenApiResponse(),
+                                        description='Success',
+                                        examples=[
+                                                 OpenApiExample("Аккаунт подтверждён",
+                                                                value={"Status": True}),
+                                                 OpenApiExample("Не всё указано",
+                                                                value={"Status": False, "Errors": "Не указаны все "
+                                                                                             "необходимые аргументы"}),
+                                                 OpenApiExample("Неправильные аргументы",
+                                                                value={'Status': False, 'Errors': 'Неправильно '
+                                                                                             'указан токен или email'})
+                                            ]
+                                        )
+                   },
+    )
     # Регистрация методом POST
     def post(self, request, *args, **kwargs):
         """
-                Подтверждает почтовый адрес пользователя.
+        Подтверждает почтовый адрес пользователя.
 
-                Args:
-                - request (Request): The Django request object.
+        Args:
+        - request (Request): The Django request object.
 
-                Returns:
-                - JsonResponse: The response indicating the status of the operation and any errors.
-                """
+        Returns:
+        - JsonResponse: The response indicating the status of the operation and any errors.
+        """
         # проверяем обязательные аргументы
         if {'email', 'token'}.issubset(request.data):
 
@@ -66,6 +90,16 @@ class AccountDetails(APIView):
     - None
     """
 
+    @extend_schema(
+        summary="Получение данных аккаунта",
+        description="Возвращает данные авторизованного пользователя.",
+        responses={200: UserSerializer,
+                   403: OpenApiResponse(response=OpenApiResponse(),
+                                        examples=[
+                       OpenApiExample('Не авторизован',
+                                      value={'Status': False, 'Error': 'Log in required'}),
+                   ])},
+    )
     # получить данные
     def get(self, request: Request, *args, **kwargs):
         """
@@ -83,6 +117,24 @@ class AccountDetails(APIView):
         serializer = UserSerializer(request.user)
         return Response(serializer.data)
 
+    @extend_schema(
+        summary="Обновление данных аккаунта",
+        description="Обновляет данные авторизованного пользователя, включая смену пароля.",
+        request=UserSerializer,
+        responses={200: OpenApiResponse(response=OpenApiResponse(),
+                                        description='Success',
+                                        examples=[
+                                                    OpenApiExample(name='Успех',
+                                                                   value={"Status": True})
+                                                ]
+                                        ),
+                   403: OpenApiResponse(response=OpenApiResponse(),
+                                        description='Error: Forbidden',
+                                        examples=[
+                       OpenApiExample('Не авторизован',
+                                      value={'Status': False, 'Error': 'Log in required'}),
+                   ])},
+    )
     # Редактирование методом POST
     def post(self, request, *args, **kwargs):
         """
@@ -141,6 +193,14 @@ class CategoryView(ListAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
 
+    @extend_schema(
+        summary="Список категорий",
+        description="Возвращает список доступных категорий.",
+        responses={200: CategorySerializer(many=True)},
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
 
 class ShopView(ListAPIView):
     """
@@ -148,6 +208,14 @@ class ShopView(ListAPIView):
     """
     queryset = Shop.objects.filter(state=True)
     serializer_class = ShopSerializer
+
+    @extend_schema(
+        summary="Список магазинов",
+        description="Возвращает список активных магазинов.",
+        responses={200: ShopSerializer(many=True)},
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
 
 
 class ProductInfoView(APIView):
@@ -161,6 +229,15 @@ class ProductInfoView(APIView):
         - None
         """
 
+    @extend_schema(
+        summary="Поиск товаров",
+        parameters=[
+            OpenApiParameter("shop_id", description="ID магазина"),
+            OpenApiParameter("category_id", description="ID категории"),
+        ],
+        description="Возвращает список товаров, отфильтрованных по магазину и/или категории.",
+        responses={200: ProductInfoSerializer(many=True)},
+    )
     def get(self, request: Request, *args, **kwargs):
         """
                Retrieve the product information based on the specified filters.
@@ -206,6 +283,17 @@ class BasketView(APIView):
     - None
     """
 
+    @extend_schema(
+        summary="Просмотр корзины",
+        description="Возвращает содержимое корзины пользователя.",
+        responses={200: OrderSerializer(many=True),
+                   403: OpenApiResponse(response=OpenApiResponse(),
+                                        description='Error: Forbidden',
+                                        examples=[
+                                            OpenApiExample('Не авторизован',
+                                                           value={'Status': False, 'Error': 'Log in required'})
+                                        ])},
+    )
     # получить корзину
     def get(self, request, *args, **kwargs):
         """
@@ -228,6 +316,43 @@ class BasketView(APIView):
         serializer = OrderSerializer(basket, many=True)
         return Response(serializer.data)
 
+    @extend_schema(
+        summary="Добавление в корзину",
+        description="Добавляет товары в корзину пользователя.",
+        request=OpenApiRequest(request='request',
+                               examples=[
+                                   OpenApiExample('post',
+                                                  value={'items': [
+                                                      {"id": 95, "quantity": 80},
+                                                      {"id": 96, "quantity": 1234, }
+                                                  ]
+                                                  })
+                               ]
+                               ),
+        responses={200: OpenApiResponse(response=OpenApiResponse(),
+                                        examples=[
+                                            OpenApiExample('Success',
+                                                           value={'Status': True, 'Создано объектов': 1}),
+                                            OpenApiExample('Не правильное тело запроса',
+                                                           value={'Status': False, 'Errors':
+                                                               'Неверный формат запроса'}),
+                                            OpenApiExample('Data base errors',
+                                                           value={'Status': False, 'Errors': 'IntegrityError: '
+                                                                                             'Order already exists'}),
+                                            OpenApiExample('Serializer errors',
+                                                           value={'Status': False, 'Errors':
+                                                                  'ValidationError: this item does not exist'}),
+                                            OpenApiExample('Необходимые параметры',
+                                                           {'Status': False, 'Errors':
+                                                                  'Не указаны все необходимые аргументы'})
+                                        ]),
+                   403: OpenApiResponse(response=OpenApiResponse(),
+                                        description='Error: Forbidden',
+                                        examples=[
+                                            OpenApiExample('Не авторизован',
+                                                           value={'Status': False, 'Error': 'Log in required'})
+                                        ])},
+    )
     # добавить в корзину
     def post(self, request, *args, **kwargs):
         """
@@ -271,6 +396,30 @@ class BasketView(APIView):
                 return JsonResponse({'Status': True, 'Создано объектов': objects_created})
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
+    @extend_schema(
+        summary="Удаление товаров из корзины",
+        description="Удаляет указанные товары из корзины пользователя. В запросе передаётся параметр "
+                    "'items' – строка, содержащая ID товаров, разделённые запятыми.",
+        request=OpenApiRequest(request='request',
+                               examples=[
+                                            OpenApiExample('delete',
+                                                           value={'items': '96, 95'})
+                                        ]),
+        responses={200: OpenApiResponse(response=OpenApiResponse(),
+                                        examples=[
+                                            OpenApiExample(' Успех',
+                                                           value={'Status': True, 'Удалено объектов': 5}),
+                                            OpenApiExample('Не все аргументы',
+                                                           value={'Status': False, 'Errors': 'Не указаны все'
+                                                                                             ' необходимые аргументы'})
+                                        ]),
+                   403: OpenApiResponse(response=OpenApiResponse(),
+                                        description='Error: Forbidden',
+                                        examples=[
+                                            OpenApiExample('Не авторизован',
+                                                           value={'Status': False, 'Error': 'Log in required'})
+                                        ])}
+    )
     # удалить товары из корзины
     def delete(self, request, *args, **kwargs):
         """
@@ -301,6 +450,38 @@ class BasketView(APIView):
                 return JsonResponse({'Status': True, 'Удалено объектов': deleted_count})
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
+    @extend_schema(
+        summary="Обновление товаров в корзине",
+        description="Обновляет количество товаров в корзине пользователя. В запросе передаётся параметр 'items' – "
+                    "JSON-строка, содержащая список объектов с ключами 'id' и 'quantity'.",
+        request=OpenApiRequest(request='request',
+                               examples=[
+                                            OpenApiExample('put',
+                                                           value={'items': [
+                                                                               { "id": 95, "quantity": 2 },
+                                                                               { "id": 96, "quantity": 1, }
+                                                                           ]
+                                                           })
+                                        ]
+        ),
+        responses={200: OpenApiResponse(response=OpenApiResponse(),
+                                        examples=[
+                                            OpenApiExample('Успех',
+                                                           value={'Status': True, 'Обновлено объектов': 7}),
+                                            OpenApiExample('Форма запроса',
+                                                           value={'Status': False,
+                                                                  'Errors': 'Неверный формат запроса'}),
+                                            OpenApiExample('Не всё указано',
+                                                           value={'Status': False,
+                                                                  'Errors': 'Не указаны все необходимые аргументы'})
+                                        ]),
+                   403: OpenApiResponse(response=OpenApiResponse(),
+                                        description='Error: Forbidden',
+                                        examples=[
+                                            OpenApiExample('Не авторизован',
+                                                           value={'Status': False, 'Error': 'Log in required'})
+                                        ])}
+    )
     # редактировать позиции в корзине
     def put(self, request, *args, **kwargs):
         """
@@ -344,6 +525,36 @@ class PartnerUpdate(APIView):
     - None
     """
 
+    @extend_schema(
+        summary="Обновление прайс-листа партнёра",
+        description="Обновляет информацию о товарах партнёра, загружая данные по указанному URL. "
+                    "В запросе передаётся параметр 'url' – ссылка на YAML-файл с данными.",
+        request=OpenApiRequest(request='yml file',
+                               examples=[
+                                   OpenApiExample('.yaml',
+                                                  value=open('../../data/shop_exmpl.yaml')
+                                                  ),]),
+        responses={200: OpenApiResponse(response=OpenApiResponse(),
+                                        examples=[
+                                            OpenApiExample('Успех',
+                                                           value={'Status': True}),
+                                            OpenApiExample('Незаполненные необходимые поля',
+                                                           value={'Status': False,
+                                                                  'Errors': 'Не указаны все необходимые аргументы'}),
+                                            OpenApiExample('serializer errors',
+                                                           value={'Status': False, 'Errors':
+                                                                  'ValidationError: this item does not exist'}),
+                                        ]),
+                   403: OpenApiResponse(response=OpenApiResponse(),
+                                        description='Error: Forbidden',
+                                        examples=[
+                                            OpenApiExample('Не авторизован',
+                                                           value={'Status': False, 'Error': 'Log in required'}),
+                                            OpenApiExample('Только для магазинов',
+                                                           value={'Status': False, 'Error': 'Только для магазинов'})
+                                        ])
+                   }
+    )
     def post(self, request, *args, **kwargs):
         """
                 Update the partner price list information.
@@ -409,6 +620,20 @@ class PartnerState(APIView):
        Attributes:
        - None
        """
+
+    @extend_schema(
+        summary="Получение статуса партнёра",
+        description="Возвращает информацию о текущем статусе магазина партнёра.",
+        responses={200: ShopSerializer,
+                   403: OpenApiResponse(response=OpenApiResponse(),
+                                        description='Error: Forbidden',
+                                        examples=[
+                                            OpenApiExample('Нужна авторизация',
+                                                           value={'Status': False, 'Error': 'Log in required'}),
+                                            OpenApiExample('Только для магазинов',
+                                                           value={'Status': False, 'Error': 'Только для магазинов'})
+                                        ])}
+    )
     # получить текущий статус
     def get(self, request, *args, **kwargs):
         """
@@ -430,6 +655,35 @@ class PartnerState(APIView):
         serializer = ShopSerializer(shop)
         return Response(serializer.data)
 
+    @extend_schema(
+        summary="Изменение статуса партнёра",
+        description="Изменяет состояние магазина партнёра. В запросе передаётся параметр 'state', "
+                    "значение 'on' означает активное состояние.",
+        request=OpenApiRequest(request='post',
+                               examples=[
+                                    OpenApiExample('request',
+                                                   value={'state': 'on'})
+                                        ]),
+        responses={200: OpenApiResponse(response=OpenApiResponse(),
+                                        examples=[
+                                            OpenApiExample('Успех',
+                                                           value={'Status': True}),
+                                            OpenApiExample('Форма запроса',
+                                                           value={'Status': False,
+                                                                  'Errors': 'Неверный формат запроса'}),
+                                            OpenApiExample('Необходимые параметры',
+                                                           value={'Status': False,
+                                                                  'Errors': 'Не указаны все необходимые аргументы'})
+                                        ]),
+                   403: OpenApiResponse(response=OpenApiResponse(),
+                                        description='Error: Forbidden',
+                                        examples=[
+                                            OpenApiExample('Нужна авторизация',
+                                                           value={'Status': False, 'Error': 'Log in required'}),
+                                            OpenApiExample('Только для магазинов',
+                                                           value={'Status': False, 'Error': 'Только для магазинов'})
+                                        ])}
+    )
     # изменить текущий статус
     def post(self, request, *args, **kwargs):
         """
@@ -449,7 +703,8 @@ class PartnerState(APIView):
         state = request.data.get('state')
         if state:
             try:
-                Shop.objects.filter(user_id=request.user.id).update(state=(lambda x: True if x == 'on' else False)(state))
+                (Shop.objects.filter(user_id=request.user.id)
+                 .update(state=(lambda x: True if x == 'on' else False)(state)))
                 return JsonResponse({'Status': True})
             except ValueError as error:
                 return JsonResponse({'Status': False, 'Errors': str(error)})
@@ -467,6 +722,19 @@ class PartnerOrders(APIView):
     - None
     """
 
+    @extend_schema(
+        summary="Получение заказов партнёра",
+        description="Возвращает заказы, связанные с магазином партнёра (исключая заказы в состоянии 'basket').",
+        responses={200: OrderSerializer(many=True),
+                   403: OpenApiResponse(response=OpenApiResponse(),
+                                        description='Error: Forbidden',
+                                        examples=[
+                                            OpenApiExample('Нужна авторизация',
+                                                           value={'Status': False, 'Error': 'Log in required'}),
+                                            OpenApiExample('Только для магазинов',
+                                                           value={'Status': False, 'Error': 'Только для магазинов'})
+                                        ])}
+    )
     def get(self, request, *args, **kwargs):
         """
                Retrieve the orders associated with the authenticated partner.
@@ -507,6 +775,17 @@ class ContactView(APIView):
        - None
        """
 
+    @extend_schema(
+        summary="Получение контактов пользователя",
+        description="Возвращает список контактов авторизованного пользователя.",
+        responses={200: ContactSerializer(many=True),
+                   403: OpenApiResponse(response=OpenApiResponse(),
+                                        description='Error: Forbidden',
+                                        examples=[
+                                            OpenApiExample('Нужна авторизация',
+                                                           value={'Status': False, 'Error': 'Log in required'})
+                                        ])}
+    )
     # получить мои контакты
     def get(self, request, *args, **kwargs):
         """
@@ -525,6 +804,41 @@ class ContactView(APIView):
         serializer = ContactSerializer(contact, many=True)
         return Response(serializer.data)
 
+    @extend_schema(
+        summary="Добавление нового контакта",
+        description="Создаёт новый контакт для авторизованного пользователя. "
+                    "Обязательные поля: 'city', 'street', 'phone'.",
+        request=OpenApiRequest(request='post',
+                               examples=[
+                                   OpenApiExample('request',
+                                                  value={
+                                                        "properties": {
+                                                            "city": "Berlin",
+                                                            "street": "Peetey",
+                                                            "phone": "+12345678910"
+                                                        },
+
+                                                      "required": ['city', 'street', 'phone']
+                                                        })
+                               ]),
+        responses={200: OpenApiResponse(response=OpenApiResponse(),
+                                        examples=[
+                                            OpenApiExample('Успех',
+                                                           value={'Status': True}),
+                                            OpenApiExample('Serializer errors',
+                                                           value={'Status': False, 'Errors':
+                                                                  'ValidationError: this item already exists'}),
+                                            OpenApiExample('Не все необходимые элементы',
+                                                           value={'Status': False, 'Errors':
+                                                               'Не указаны все необходимые аргументы'})
+                                        ]),
+                   403: OpenApiResponse(response=OpenApiResponse(),
+                                        description='Error: Forbidden',
+                                        examples=[
+                                            OpenApiExample('Нужна авторизация',
+                                                           value={'Status': False, 'Error': 'Log in required'})
+                                        ])}
+    )
     # добавить новый контакт
     def post(self, request, *args, **kwargs):
         """
@@ -552,6 +866,30 @@ class ContactView(APIView):
 
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
+    @extend_schema(
+        summary="Удаление контакта",
+        description="Удаляет контакты пользователя. В запросе передаётся параметр "
+                    "'items' – строка с ID контактов, разделённых запятыми.",
+        request=OpenApiRequest(request='delete',
+                               examples=[
+                                   OpenApiExample('request',
+                                                  value={'items': '1, 2, 6'})
+                               ]),
+        responses={200: OpenApiResponse(response=OpenApiResponse(),
+                                        examples=[
+                                            OpenApiExample('Успех',
+                                                           value={'Status': True, 'Удалено объектов': 3}),
+                                            OpenApiExample('Не все необходимые элементы',
+                                                           value={'Status': False, 'Errors':
+                                                               'Не указаны все необходимые аргументы'})
+                                        ]),
+                   403: OpenApiResponse(response=OpenApiResponse(),
+                                        description='Error: Forbidden',
+                                        examples=[
+                                            OpenApiExample('Нужна авторизация',
+                                                           value={'Status': False, 'Error': 'Log in required'})
+                                        ])}
+    )
     # удалить контакт
     def delete(self, request, *args, **kwargs):
         """
@@ -581,6 +919,42 @@ class ContactView(APIView):
                 return JsonResponse({'Status': True, 'Удалено объектов': deleted_count})
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
+    @extend_schema(
+        summary="Обновление контакта",
+        description="Обновляет данные контакта пользователя. "
+                    "В запросе обязательно должен присутствовать параметр 'id' (числовой ID контакта).",
+        request=OpenApiRequest(request='put',
+                               examples=[
+                                   OpenApiExample('request',
+                                                  value={
+                                                      "properties": {
+                                                          "id": 3,
+                                                          "house": 67,
+                                                          "building": 1,
+                                                          "phone": "87654321098"
+                                                      },
+
+                                                      "required": ['id']
+                                                  })
+                               ]),
+        responses={200: OpenApiResponse(response=OpenApiResponse(),
+                                        examples=[
+                                            OpenApiExample('Успех',
+                                                           value={'Status': True}),
+                                            OpenApiExample('Serializer errors',
+                                                           value={'Status': False, 'Errors':
+                                                               'ValidationError: this contact does not exist'}),
+                                            OpenApiExample('Не все необходимые элементы',
+                                                           value={'Status': False, 'Errors':
+                                                               'Не указаны все необходимые аргументы'})
+                                        ]),
+                   403: OpenApiResponse(response=OpenApiResponse(),
+                                        description='Error: Forbidden',
+                                        examples=[
+                                            OpenApiExample('Нужна авторизация',
+                                                           value={'Status': False, 'Error': 'Log in required'})
+                                        ])}
+    )
     # редактировать контакт
     def put(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
@@ -622,6 +996,17 @@ class OrderView(APIView):
     - None
     """
 
+    @extend_schema(
+        summary="Получение заказов пользователя",
+        description="Возвращает список заказов пользователя, исключая корзину (state='basket').",
+        responses={200: OrderSerializer(many=True),
+                   403: OpenApiResponse(response=OpenApiResponse(),
+                                        description='Error: Forbidden',
+                                        examples=[
+                                            OpenApiExample('Необходима авторизация',
+                                                           value={'Status': False, 'Error': 'Log in required'})
+                                        ])}
+    )
     # получить мои заказы
     def get(self, request, *args, **kwargs):
         """
@@ -644,6 +1029,38 @@ class OrderView(APIView):
         serializer = OrderSerializer(order, many=True)
         return Response(serializer.data)
 
+    @extend_schema(
+        summary="Размещение заказа",
+        description="Переводит заказ из состояния 'basket' в 'new' и отправляет уведомление. "
+                    "В запросе передаются параметры 'id' (ID заказа) и 'contact' (ID контакта).",
+        request=OpenApiRequest(request='post',
+                               examples=[
+                                   OpenApiExample('request',
+                                                  value={
+                                                      "id": 7,
+                                                      "contact": 1,
+                                                      "required": ["id", "contact"]
+                                                  })
+                               ]),
+        responses={200: OpenApiResponse(response=OpenApiResponse(),
+                                        examples=[
+                                            OpenApiExample('Успех',
+                                                           value={'Status': True}),
+                                            OpenApiExample('Незаполненны необходимые поля',
+                                                           value={'Status': False,
+                                                                  'Errors': 'Не указаны все необходимые аргументы'}),
+                                            OpenApiExample('Не правильные аргументы',
+                                                           value={'Status': False,
+                                                                  'Errors': 'Неправильно указаны аргументы'}),
+                                        ]),
+                   403: OpenApiResponse(response=OpenApiResponse(),
+                                        description='Error: Forbidden',
+                                        examples=[
+                                            OpenApiExample('Не авторизован',
+                                                           value={'Status': False, 'Error': 'Log in required'})
+                                        ])
+                   }
+    )
     # разместить заказ из корзины
     def post(self, request, *args, **kwargs):
         """
@@ -676,7 +1093,7 @@ class OrderView(APIView):
 
 class HomeView(APIView):
     """
-    Class for having a cool picture on the main page
+    Class for having a cool picture on the main page.
     """
     def get(self, request, *args, **kwargs):
         return render(request, 'main.html')
