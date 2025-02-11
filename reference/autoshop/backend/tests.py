@@ -1,6 +1,5 @@
-import os
+import time
 
-import django
 import yaml
 import pytest
 from django.urls import reverse
@@ -8,8 +7,6 @@ from rest_framework.test import APIClient
 from backend.models import User, ConfirmEmailToken
 from json import dumps
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', '../autoshop.settings')
-django.setup()
 
 
 @pytest.fixture
@@ -24,6 +21,44 @@ def authenticated_user():
 
 
 @pytest.mark.django_db
+class TestProductInfoView:
+    def test_get_products(self, api_client):
+        """
+        Checks if the API returns product information as a list.
+        :param api_client: an instance of APIClient. Is used to make HTTP requests in tests
+        :return:
+        """
+        user = User.objects.create_user(username="toe", email="toe@example.com", is_active=True)
+        ConfirmEmailToken.objects.create(user=user, key="text")
+        api_client.force_authenticate(user)
+        url = reverse("backend:shops")
+
+        response = api_client.get(url)
+
+        assert response.status_code == 200
+        assert isinstance(response.data['results'], list)
+
+    def test_success_unauthenticated_throttling(self, api_client):
+        """
+        Tests throttling of an unauthenticated user.
+        :param api_client: an instance of APIClient. Is used to make HTTP requests in tests
+        :return:
+        """
+        url = reverse("backend:shops")
+
+        for i in range(1, 11):
+            response = api_client.get(url)
+            assert response.status_code == 200
+
+        response = api_client.get(url)
+        assert response.status_code == 429
+        assert response.json() == {'detail': 'Request was throttled. Expected available in 60 seconds.'}
+
+        # Ждём минуту, чтобы следующие неавторизованные запросы прошли throttling
+        time.sleep(60)
+
+
+@pytest.mark.django_db
 class TestConfirmAccount:
     def test_confirm_account_success(self, api_client):
         """
@@ -34,6 +69,7 @@ class TestConfirmAccount:
         ConfirmEmailToken.objects.create(user=user, key="testtoken")
         url = reverse("backend:user-register-confirm")
         data = {"email": "user@example.com", "token": "testtoken"}
+        api_client.force_authenticate(user=user)
 
         response = api_client.post(url, data)
         user.refresh_from_db()
@@ -42,18 +78,19 @@ class TestConfirmAccount:
         assert user.is_active is True
         assert not ConfirmEmailToken.objects.filter(key="testtoken").exists()
 
-    def test_confirm_account_missing_params(self, api_client):
+    def test_confirm_account_missing_params(self, api_client, authenticated_user):
         """
         Checks the behavior when required parameters are missing for account confirmation.
         :param api_client: an instance of APIClient. Is used to make HTTP requests in tests.
         :return:
         """
         url = reverse("backend:user-register-confirm")
+        api_client.force_authenticate(user=authenticated_user)
         response = api_client.post(url, {})
         assert response.status_code == 200
         assert response.json() == {"Status": False, "Errors": "Не указаны все необходимые аргументы"}
 
-    def test_confirm_account_wrong_params(self, api_client):
+    def test_confirm_account_wrong_params(self, api_client, authenticated_user):
         """
         Verifies the Error when the required parameter is wrong for account confirmation.
         :param api_client: an instance of APIClient. Is used to make HTTP requests in tests.
@@ -61,6 +98,7 @@ class TestConfirmAccount:
         """
         user = User.objects.create_user(username="user", email="user@example.com", is_active=False)
         ConfirmEmailToken.objects.create(user=user, key="testtoken")
+        api_client.force_authenticate(user=authenticated_user)
         data = {"email": "wrong@address.om", "token": "testtoken"}
 
         url = reverse("backend:user-register-confirm")
@@ -70,16 +108,17 @@ class TestConfirmAccount:
 
     def test_confirm_account_throttling(self, api_client):
         """
-        Checks the behavior when more requests that allowed is made.
+        Checks the behavior when more requests that allowed is made by an authenticated user.
         :param api_client: an instance of APIClient. Is used to make HTTP requests in tests.
         :return:
         """
         user = User.objects.create_user(username="test", email="test@example.com", is_active=False)
+        api_client.force_authenticate(user=user)
         ConfirmEmailToken.objects.create(user=user, key="token")
         url = reverse("backend:user-register-confirm")
         data = {"email": "test@example.com", "token": "token"}
 
-        for i in range(1, 2):
+        for i in range(1, 4):
             response = api_client.post(url, data)
             assert response.status_code == 200
         response = api_client.post(url, data)
@@ -138,7 +177,7 @@ class TestAccountDetails:
 
 @pytest.mark.django_db
 class TestCategoryView:
-    def test_get_categories(self, api_client):
+    def test_get_categories(self, api_client, authenticated_user):
         """
         Verifies the retrieval of category data from the API.
         Ensures the response contains a dictionary of categories.
@@ -146,6 +185,7 @@ class TestCategoryView:
         :return:
         """
         url = reverse("backend:categories")
+        api_client.force_authenticate(user=authenticated_user)
 
         response = api_client.get(url)
 
@@ -166,7 +206,7 @@ class TestShopView:
         response = api_client.get(url)
 
         assert response.status_code == 200
-        assert isinstance(response.data, list)
+        assert isinstance(response.data['results'], list)
 
     def test_get_shops_authenticated_throttling(self, api_client):
         """
@@ -181,28 +221,11 @@ class TestShopView:
 
         for i in range(1, 41):
             response = api_client.get(url)
-
             assert response.status_code == 200
 
         response = api_client.get(url)
         assert response.status_code == 429
         assert response.json() == {'detail': 'Request was throttled. Expected available in 60 seconds.'}
-
-
-@pytest.mark.django_db
-class TestProductInfoView:
-    def test_get_products(self, api_client):
-        """
-        Checks if the API returns product information as a list.
-        :param api_client: an instance of APIClient. Is used to make HTTP requests in tests
-        :return:
-        """
-        url = reverse("backend:shops")
-
-        response = api_client.get(url)
-
-        assert response.status_code == 200
-        assert isinstance(response.data, list)
 
 
 @pytest.mark.django_db
@@ -312,10 +335,10 @@ class TestOrderView:
 
 
 @pytest.mark.django_db
-class TestHomeView:
-    def test_home_view(self, api_client):
+class TestSuccessView:
+    def test_success_view(self, api_client):
         """
-        Ensures the home view returns a successful response.
+        Ensures the success view returns a successful response.
         :param api_client: an instance of APIClient. Is used to make HTTP requests in tests
         :return:
         """
