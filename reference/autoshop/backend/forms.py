@@ -5,7 +5,7 @@ from django.http import JsonResponse
 from rest_framework.authtoken.models import Token
 
 from .serializers import UserSerializer
-from .tasks import new_user_registered, password_reset_token_created
+from .tasks import new_user_registered_task, password_reset_token_created_task
 from .models import USER_TYPE_CHOICES
 
 
@@ -21,7 +21,7 @@ class ResetPasswordForm(forms.Form):
         Ускоренно отправляем письмо с помощью celery
         :return:
         """
-        password_reset_token_created.delay(
+        password_reset_token_created_task.delay(
             self.cleaned_data['email'],
         )
 
@@ -69,7 +69,7 @@ class RegisterAccountForm(forms.Form):
                 user.set_password(self.cleaned_data['password'])
                 user.save()
                 # отправляем email с токеном активации аккаунта
-                new_user_registered.delay(
+                new_user_registered_task.delay(
                     sender=user,
                 )
                 return JsonResponse({'Status': True})
@@ -105,3 +105,10 @@ class LoginAccountForm(forms.Form):
                 return JsonResponse({'Status': True, 'Token': token.key})
 
         return JsonResponse({'Status': False, 'Errors': 'Не удалось авторизовать'})
+
+
+class YAMLUploadForm(forms.Form):
+    """
+    Upload a file form
+    """
+    file = forms.FileField()

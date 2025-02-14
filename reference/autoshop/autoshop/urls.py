@@ -21,10 +21,11 @@ from backend.views import HomeView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path(r'jet/', include('jet.urls', 'jet')),
+    path(r'jet/dashboard/', include('jet.dashboard.urls', 'jet-dashboard')),
     path('', HomeView.as_view(), name='home'),
 
     path('schema/', SpectacularAPIView.as_view(), name='schema'),
-    # Optional UI:
     path('schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('schema/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
 

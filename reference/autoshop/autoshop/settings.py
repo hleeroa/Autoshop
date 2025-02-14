@@ -29,7 +29,6 @@ ALLOWED_HOSTS = ['*']
 # Application definition
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -41,6 +40,9 @@ INSTALLED_APPS = [
 
     'drf_spectacular',
     'drf_spectacular_sidecar',
+    'jet',
+    'django.contrib.admin',
+    'jet.dashboard',
 
     'backend',
 ]
@@ -128,6 +130,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/2.2/howto/static-files/
 
 STATIC_URL = '/static/'
+STATIC_ROOT= os.path.join(BASE_DIR,'static/')
 
 AUTH_USER_MODEL = 'backend.User'
 
@@ -186,3 +189,8 @@ SPECTACULAR_SETTINGS = {
     'VERSION': '1.2.1',
     'SERVE_INCLUDE_SCHEMA': False,
 }
+
+JET_SIDE_MENU_COMPACT = True
+JET_CHANGE_FORM_SIBLING_LINKS = True
+JET_INDEX_DASHBOARD = 'jet.dashboard.dashboard.DefaultIndexDashboard'
+JET_APP_INDEX_DASHBOARD = 'jet.dashboard.dashboard.DefaultAppIndexDashboard'
