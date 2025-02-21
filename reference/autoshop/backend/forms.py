@@ -6,7 +6,7 @@ from rest_framework.authtoken.models import Token
 
 from .serializers import UserSerializer
 from .tasks import new_user_registered_task, password_reset_token_created_task
-from .models import USER_TYPE_CHOICES
+from .models import User, Product
 
 
 class ResetPasswordForm(forms.Form):
@@ -26,22 +26,33 @@ class ResetPasswordForm(forms.Form):
         )
 
 
-class RegisterAccountForm(forms.Form):
+class RegisterAccountForm(forms.ModelForm):
     """
     Форма для регистрации пользователей
     """
-
-    email = forms.EmailField(label='Email', widget=forms.EmailInput)
-    first_name = forms.CharField(max_length=20, label='Имя')
-    last_name = forms.CharField(max_length=25, label='Фамилия')
-    type = forms.ChoiceField(choices=USER_TYPE_CHOICES, label='Тип аккаунта')
-    position = forms.CharField(max_length=30, label='Позиция', required=False)
-    company = forms.CharField(max_length=35, label='Компания', required=False)
-    password = forms.CharField(widget=forms.PasswordInput, label='Придумайте пароль')
-    widgets = {
-        'password': forms.PasswordInput(),
-        'email': forms.EmailInput(),
-    }
+    class Meta:
+        model = User
+        fields = ('image', 'first_name', 'last_name', 'type',
+                  'position', 'company', 'email', 'password')
+        labels = {
+            'image': 'Фото профиля',
+            'first_name': '',
+            'last_name': '',
+            'type': '',
+            'position': '',
+            'company': '',
+            'email': '',
+            'password': '',
+        }
+        widgets = {
+            'image': forms.FileInput(),
+            'password': forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Придумай пароль'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Email'}),
+            'first_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Имя'}),
+            'last_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Фамилия'}),
+            'position': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Должность'}),
+            'company': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Компания'}),
+        }
 
     def send_reg_token(self):
         """
@@ -70,7 +81,10 @@ class RegisterAccountForm(forms.Form):
                 user.save()
                 # отправляем email с токеном активации аккаунта
                 new_user_registered_task.delay(
-                    sender=user,
+                    sender='',
+                    email=user.email,
+                    is_active=user.is_active,
+                    created=True,
                 )
                 return JsonResponse({'Status': True})
             else:
@@ -105,10 +119,3 @@ class LoginAccountForm(forms.Form):
                 return JsonResponse({'Status': True, 'Token': token.key})
 
         return JsonResponse({'Status': False, 'Errors': 'Не удалось авторизовать'})
-
-
-class YAMLUploadForm(forms.Form):
-    """
-    Upload a file form
-    """
-    file = forms.FileField()

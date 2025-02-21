@@ -1,5 +1,5 @@
-# Верстальщик
 from rest_framework import serializers
+from versatileimagefield.serializers import VersatileImageFieldSerializer
 
 from backend.models import User, Category, Shop, ProductInfo, Product, ProductParameter, OrderItem, Order, Contact
 
@@ -16,10 +16,18 @@ class ContactSerializer(serializers.HyperlinkedModelSerializer):
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
     contacts = ContactSerializer(read_only=True, many=True, help_text='Адрес и телефон пользователя.')
+    image = VersatileImageFieldSerializer(
+        sizes=[
+            ('full_size', 'url'),
+            ('thumbnail', 'thumbnail__100x100'),
+            ('medium_square_crop', 'crop__400x400'),
+            ('small_square_crop', 'crop__50x50')
+        ]
+    )
 
     class Meta:
         model = User
-        fields = ('id', 'first_name', 'last_name', 'email', 'company', 'position', 'contacts')
+        fields = ('id', 'first_name', 'last_name', 'email', 'image', 'company', 'position', 'contacts')
         read_only_fields = ('id',)
 
 

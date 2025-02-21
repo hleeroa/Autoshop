@@ -7,7 +7,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import URLValidator
 from django.db import IntegrityError
 from django.db.models import Q, Sum, F
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseRedirect
 from django.shortcuts import render
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
@@ -1066,7 +1066,7 @@ class OrderView(APIView):
 
 class HomeView(APIView):
     """
-    Class for having a cool picture on the main page.
+    Class for having a main page.
     """
     def get(self, request, *args, **kwargs):
         return render(request, 'main.html')
@@ -1092,17 +1092,15 @@ class SuccessView(TemplateView):
     template_name = 'success.html'
 
 
-class RegisterAccountView(FormView):
+def register_account_view(request):
     """
     Class for signing up users
     """
-    template_name = 'register.html'
-    form_class = RegisterAccountForm
-    success_url = 'login'
-
-    @extend_schema(
-        responses={200, "Success"}
-    )
-    def form_valid(self, form):
-        form.send_reg_token()
-        return super().form_valid(form)
+    if request.method == 'POST':
+        form = RegisterAccountForm(request.POST, request.FILES)
+        if form.is_valid():
+            form.send_reg_token()
+            return HttpResponseRedirect('login')
+    else:
+        form = RegisterAccountForm()
+    return render(request, 'register.html', {'form': form})

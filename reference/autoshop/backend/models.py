@@ -1,9 +1,17 @@
+import os
+
+from autoshop.settings import MEDIA_ROOT
+
 from django.contrib.auth.base_user import BaseUserManager
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.db import models
+from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 from django_rest_passwordreset.tokens import get_token_generator
+
+from versatileimagefield.fields import VersatileImageField, PPOIField
+from versatileimagefield.placeholder import OnDiscPlaceholderImage
 
 STATE_CHOICES = (
     ('basket', 'Статус корзины'),
@@ -69,6 +77,18 @@ class User(AbstractUser):
     objects = UserManager()
     USERNAME_FIELD = 'email'
     email = models.EmailField(_('email address'), unique=True)
+    image = VersatileImageField(
+        upload_to='profile/',
+        placeholder_image=OnDiscPlaceholderImage(
+            path=os.path.join(
+                MEDIA_ROOT, 'profile/no-profile-pic.jpg'
+            )
+        ),
+        ppoi_field='ppoi',
+        blank=True,
+        null=True
+    )
+    ppoi = PPOIField()
     company = models.CharField(verbose_name='Компания', max_length=40, blank=True)
     position = models.CharField(verbose_name='Должность', max_length=40, blank=True)
     username_validator = UnicodeUsernameValidator()
@@ -79,7 +99,7 @@ class User(AbstractUser):
         validators=[username_validator],
         error_messages={
             'unique': _("A user with that username already exists."),
-        },
+        }
     )
     is_active = models.BooleanField(
         _('active'),
@@ -90,6 +110,11 @@ class User(AbstractUser):
         ),
     )
     type = models.CharField(verbose_name='Тип пользователя', choices=USER_TYPE_CHOICES, max_length=5, default='buyer')
+
+    def image_tag(self):
+        return mark_safe('<img src="%s" />' % self.image.crop['200x200'].url)
+
+    image_tag.short_description = 'Image'
 
     def __str__(self):
         return f'{self.first_name} {self.last_name}'
@@ -151,6 +176,13 @@ class Product(models.Model):
 
 class ProductInfo(models.Model):
     objects = models.manager.Manager()
+    image = VersatileImageField(
+        upload_to='product/',
+        ppoi_field='ppoi',
+        blank=True,
+        null=True
+    )
+    ppoi = PPOIField()
     model = models.CharField(max_length=80, verbose_name='Модель', blank=True)
     external_id = models.PositiveIntegerField(verbose_name='Внешний ИД')
     product = models.ForeignKey(Product, verbose_name='Продукт', related_name='product_infos', blank=True,
@@ -167,6 +199,11 @@ class ProductInfo(models.Model):
         constraints = [
             models.UniqueConstraint(fields=['product', 'shop', 'external_id'], name='unique_product_info'),
         ]
+
+    def image_tag(self):
+        return mark_safe('<img src="%s" />' % self.image.crop['200x200'].url)
+
+    image_tag.short_description = 'ProductImage'
 
 
 class Parameter(models.Model):

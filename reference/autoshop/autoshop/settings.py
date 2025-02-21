@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'jet',
     'django.contrib.admin',
     'jet.dashboard',
+    'versatileimagefield',
 
     'backend',
 ]
@@ -132,6 +133,9 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT= os.path.join(BASE_DIR,'static/')
 
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
 AUTH_USER_MODEL = 'backend.User'
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
@@ -194,3 +198,5 @@ JET_SIDE_MENU_COMPACT = True
 JET_CHANGE_FORM_SIBLING_LINKS = True
 JET_INDEX_DASHBOARD = 'jet.dashboard.dashboard.DefaultIndexDashboard'
 JET_APP_INDEX_DASHBOARD = 'jet.dashboard.dashboard.DefaultAppIndexDashboard'
+
+VERSATILEIMAGEFIELD_USE_PLACEHOLDIT = True

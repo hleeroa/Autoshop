@@ -104,3 +104,9 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+# media files
+media/
+
+# static
+static/

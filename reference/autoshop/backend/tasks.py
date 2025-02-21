@@ -36,24 +36,24 @@ def password_reset_token_created_task(email):
 
 
 @shared_task()
-def new_user_registered_task(sender: Type[User], user: User, created: bool, **kwargs):
+def new_user_registered_task(sender: Type[User], email, is_active, created: bool, **kwargs):
     """
     Ускорено отправляем письмо с подтверждением почты
     с помощью celery
     """
-    if created and not user.is_active:
+    if created and not is_active:
         # send an e-mail to the user
         token, _ = ConfirmEmailToken.objects.get_or_create(user_id=user.pk)
 
         msg = EmailMultiAlternatives(
             # title:
-            f"Токен активации аккаунта для {user.email}",
+            f"Токен активации аккаунта для {email}",
             # message:
             token.key,
             # from:
             settings.EMAIL_HOST_USER,
             # to:
-            [user.email]
+            [email]
         )
         msg.send()
 

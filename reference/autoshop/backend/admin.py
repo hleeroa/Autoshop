@@ -1,26 +1,33 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
+from django.contrib.admin.views import main
 
 from .models import User, Shop, Category, Product, ProductInfo, Parameter, ProductParameter, Order, OrderItem, \
     Contact, ConfirmEmailToken
 
 
-@admin.register(User)
 class CustomUserAdmin(UserAdmin):
     """
     Панель управления пользователями
     """
+    def __init__(self, *args, **kwargs):
+        super(CustomUserAdmin, self).__init__(*args, **kwargs)
+        main.EMPTY_CHANGELIST_VALUE = '-'
     model = User
 
     fieldsets = (
-        (None, {'fields': ('email', 'password', 'type')}),
+        (None, {'fields': ('image', 'email', 'password', 'type', 'image_tag')}),
         ('Personal info', {'fields': ('first_name', 'last_name', 'company', 'position')}),
         ('Permissions', {
             'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions'),
         }),
         ('Important dates', {'fields': ('last_login', 'date_joined')}),
     )
+    readonly_fields = ['image_tag']
     list_display = ('email', 'first_name', 'last_name', 'is_staff')
+
+# Регистрируем модель User
+admin.site.register(User, CustomUserAdmin)
 
 
 @admin.register(Shop)
@@ -65,6 +72,7 @@ class ProductInfoAdmin(admin.ModelAdmin):
     search_fields = ('model', 'external_id')
     list_filter = ('price', 'model', 'shop__id')
     ordering = ('model',)
+    readonly_fields = ['image_tag']
 
 
 @admin.register(Parameter)
