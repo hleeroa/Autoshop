@@ -81,7 +81,7 @@ class User(AbstractUser):
         upload_to='profile/',
         placeholder_image=OnDiscPlaceholderImage(
             path=os.path.join(
-                MEDIA_ROOT, 'profile/no-profile-pic.jpg'
+                MEDIA_ROOT, '__placeholder__/no-profile-pic.jpg'
             )
         ),
         ppoi_field='ppoi',

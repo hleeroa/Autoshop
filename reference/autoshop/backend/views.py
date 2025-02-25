@@ -17,7 +17,7 @@ from json import loads
 from backend.models import Shop, Category, ProductInfo, Order, OrderItem, Contact, ConfirmEmailToken
 from backend.serializers import UserSerializer, CategorySerializer, ShopSerializer, ProductInfoSerializer, \
     OrderItemSerializer, OrderSerializer, ContactSerializer
-from backend.tasks import new_order_task, do_import_task
+from backend.tasks import new_order_task, do_import_task, index
 from backend.forms import ResetPasswordForm, RegisterAccountForm, LoginAccountForm
 
 
@@ -1096,7 +1096,7 @@ def register_account_view(request):
     """
     Class for signing up users
     """
-    if request.method == 'POST':
+    if request.method in ['POST', 'FILES']:
         form = RegisterAccountForm(request.POST, request.FILES)
         if form.is_valid():
             form.send_reg_token()
@@ -1104,3 +1104,8 @@ def register_account_view(request):
     else:
         form = RegisterAccountForm()
     return render(request, 'register.html', {'form': form})
+
+
+def error(request):
+    res = index.delay()
+    print(res.get(timeout=1))

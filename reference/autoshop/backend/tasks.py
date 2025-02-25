@@ -1,13 +1,23 @@
 from typing import Type
 
+import rollbar
+from celery.signals import task_failure
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from celery import shared_task
+from django.http import HttpResponse
 from django_rest_passwordreset.views import generate_token_for_email
 from requests import get
 from yaml import load as load_yaml, Loader
 
+from autoshop.celery import app
 from backend.models import ConfirmEmailToken, User, Parameter, ProductParameter, ProductInfo, Product, Category, Shop
+
+
+def celery_base_data_hook(request, data):
+    data['framework'] = 'celery'
+
+rollbar.BASE_DATA_HOOK = celery_base_data_hook
 
 
 @shared_task()
@@ -34,16 +44,15 @@ def password_reset_token_created_task(email):
     )
     msg.send()
 
-
 @shared_task()
-def new_user_registered_task(sender: Type[User], email, is_active, created: bool, **kwargs):
+def new_user_registered_task(sender: Type[User], pk, email, is_active, created: bool, **kwargs):
     """
     Ускорено отправляем письмо с подтверждением почты
     с помощью celery
     """
     if created and not is_active:
         # send an e-mail to the user
-        token, _ = ConfirmEmailToken.objects.get_or_create(user_id=user.pk)
+        token, _ = ConfirmEmailToken.objects.get_or_create(user_id=pk)
 
         msg = EmailMultiAlternatives(
             # title:
@@ -56,7 +65,6 @@ def new_user_registered_task(sender: Type[User], email, is_active, created: bool
             [email]
         )
         msg.send()
-
 
 @shared_task()
 def new_order_task(user_id, **kwargs):
@@ -78,7 +86,6 @@ def new_order_task(user_id, **kwargs):
         [user.email]
     )
     msg.send()
-
 
 @shared_task()
 def do_import_task(url, request):
@@ -107,3 +114,15 @@ def do_import_task(url, request):
             ProductParameter.objects.create(product_info_id=product_info.id,
                                             parameter_id=parameter_object.id,
                                             value=value)
+
+@task_failure.connect
+def handle_task_failure(**kw):
+    rollbar.report_exc_info(extra_data=kw)
+
+# function to test RollBar
+# it provokes an Error
+@app.task
+def index():
+    a = None
+    a.hello() # Creating an error with an invalid line of code
+    return HttpResponse("Hello, world. You're at the pollapp index.")

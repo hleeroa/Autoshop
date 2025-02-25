@@ -27,7 +27,8 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'first_name', 'last_name', 'email', 'image', 'company', 'position', 'contacts')
+        fields = ('id', 'image', 'first_name', 'last_name', 'type', 'company',
+                  'position', 'email', 'password', 'contacts')
         read_only_fields = ('id',)
 
 
@@ -66,10 +67,18 @@ class ProductInfoSerializer(serializers.HyperlinkedModelSerializer):
     product = ProductSerializer(read_only=True, help_text='Конкретный продукт.')
     product_parameters = ProductParameterSerializer(read_only=True, many=True, help_text='Список параметров. '
                                                                                          'Описывают продукт.')
+    image = VersatileImageFieldSerializer(
+        sizes=[
+            ('full_size', 'url'),
+            ('thumbnail', 'thumbnail__100x100'),
+            ('medium_square_crop', 'crop__400x400'),
+            ('small_square_crop', 'crop__50x50')
+        ]
+    )
 
     class Meta:
         model = ProductInfo
-        fields = ('id', 'model', 'product', 'shop', 'quantity', 'price', 'price_rrc', 'product_parameters',)
+        fields = ('id', 'image', 'model', 'product', 'shop', 'quantity', 'price', 'price_rrc', 'product_parameters',)
         read_only_fields = ('id',)
 
 

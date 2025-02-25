@@ -56,6 +56,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+
+    'rollbar.contrib.django.middleware.RollbarNotifierMiddleware',
 ]
 
 ROOT_URLCONF = 'autoshop.urls'
@@ -82,7 +84,7 @@ WSGI_APPLICATION = 'autoshop.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/2.2/ref/settings/#databases
 
-#TODO Ввести данные для подключению к базе данных Postgres:
+#TODO Ввести данные для подключению к базе данных Postgres
 
 DATABASES = {
 
@@ -139,7 +141,6 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 AUTH_USER_MODEL = 'backend.User'
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-# EMAIL_USE_TLS = True
 
 
 #TODO Настроить почту для автоматической рассылки токенов
@@ -180,6 +181,7 @@ REST_FRAMEWORK = {
 
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 
+    'EXCEPTION_HANDLER': 'rollbar.contrib.django_rest_framework.post_exception_handler',
 }
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
@@ -199,4 +201,13 @@ JET_CHANGE_FORM_SIBLING_LINKS = True
 JET_INDEX_DASHBOARD = 'jet.dashboard.dashboard.DefaultIndexDashboard'
 JET_APP_INDEX_DASHBOARD = 'jet.dashboard.dashboard.DefaultAppIndexDashboard'
 
+
 VERSATILEIMAGEFIELD_USE_PLACEHOLDIT = True
+
+
+#TODO Добавить Rollbar access token
+ROLLBAR = {
+    'access_token': '',
+    'environment': 'development' if DEBUG else 'production',
+    'root': BASE_DIR,
+}

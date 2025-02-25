@@ -3,10 +3,11 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from django.http import JsonResponse
 from rest_framework.authtoken.models import Token
+from versatileimagefield.forms import SizedImageCenterpointClickDjangoAdminField
 
 from .serializers import UserSerializer
 from .tasks import new_user_registered_task, password_reset_token_created_task
-from .models import User, Product
+from .models import User
 
 
 class ResetPasswordForm(forms.Form):
@@ -30,6 +31,8 @@ class RegisterAccountForm(forms.ModelForm):
     """
     Форма для регистрации пользователей
     """
+    image = SizedImageCenterpointClickDjangoAdminField(required=False)
+
     class Meta:
         model = User
         fields = ('image', 'first_name', 'last_name', 'type',
@@ -42,10 +45,9 @@ class RegisterAccountForm(forms.ModelForm):
             'position': '',
             'company': '',
             'email': '',
-            'password': '',
+            'password': ''
         }
         widgets = {
-            'image': forms.FileInput(),
             'password': forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Придумай пароль'}),
             'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Email'}),
             'first_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Имя'}),
@@ -69,7 +71,7 @@ class RegisterAccountForm(forms.ModelForm):
             # noinspection PyTypeChecker
             for item in password_error:
                 error_array.append(item)
-            return JsonResponse({'Status': False, 'Errors': {'password': error_array}})
+            raise (JsonResponse({'Status': False, 'Errors': {'password': error_array}}), 405)
         else:
             # проверяем данные для уникальности имени пользователя
 
@@ -81,6 +83,7 @@ class RegisterAccountForm(forms.ModelForm):
                 user.save()
                 # отправляем email с токеном активации аккаунта
                 new_user_registered_task.delay(
+                    pk=user.id,
                     sender='',
                     email=user.email,
                     is_active=user.is_active,
@@ -88,7 +91,8 @@ class RegisterAccountForm(forms.ModelForm):
                 )
                 return JsonResponse({'Status': True})
             else:
-                return JsonResponse({'Status': False, 'Errors': user_serializer.errors})
+                print(user_serializer.errors)
+                raise (JsonResponse({'Status': False, 'Errors': user_serializer.errors}), 403)
 
 
 class LoginAccountForm(forms.Form):
