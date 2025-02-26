@@ -36,7 +36,6 @@ class CategorySerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Category
         fields = ('id', 'name',)
-        read_only_fields = ('id',)
 
 
 class ShopSerializer(serializers.HyperlinkedModelSerializer):

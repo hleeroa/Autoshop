@@ -134,8 +134,6 @@ class Shop(models.Model):
                                 on_delete=models.CASCADE)
     state = models.BooleanField(verbose_name='статус получения заказов', default=True)
 
-    # filename
-
     class Meta:
         verbose_name = 'Магазин'
         verbose_name_plural = "Список магазинов"

@@ -14,6 +14,7 @@ from autoshop.celery import app
 from backend.models import ConfirmEmailToken, User, Parameter, ProductParameter, ProductInfo, Product, Category, Shop
 
 
+# configuring celery to Rollbar's usage
 def celery_base_data_hook(request, data):
     data['framework'] = 'celery'
 
@@ -52,7 +53,7 @@ def new_user_registered_task(sender: Type[User], pk, email, is_active, created: 
     """
     if created and not is_active:
         # send an e-mail to the user
-        token, _ = ConfirmEmailToken.objects.get_or_create(user_id=pk)
+        token, _ = ConfirmEmailToken.objects.get_or_create(user_id=pk).cache()
 
         msg = EmailMultiAlternatives(
             # title:
@@ -73,7 +74,7 @@ def new_order_task(user_id, **kwargs):
     с помощью celery
     """
     # send an e-mail to the user
-    user = User.objects.get(id=user_id)
+    user = User.objects.get(id=user_id).cache()
 
     msg = EmailMultiAlternatives(
         # title:
@@ -93,14 +94,14 @@ def do_import_task(url, request):
 
     data = load_yaml(stream, Loader=Loader)
 
-    shop, _ = Shop.objects.get_or_create(name=data['shop'], user_id=request.user.id)
+    shop, _ = Shop.objects.get_or_create(name=data['shop'], user_id=request.user.id).cache()
     for category in data['categories']:
-        category_object, _ = Category.objects.get_or_create(id=category['id'], name=category['name'])
+        category_object, _ = Category.objects.get_or_create(id=category['id'], name=category['name']).cache()
         category_object.shops.add(shop.id)
         category_object.save()
-    ProductInfo.objects.filter(shop_id=shop.id).delete()
+    ProductInfo.objects.filter(shop_id=shop.id).delete().cache()
     for item in data['goods']:
-        product, _ = Product.objects.get_or_create(name=item['name'], category_id=item['category'])
+        product, _ = Product.objects.get_or_create(name=item['name'], category_id=item['category']).cache()
 
         product_info = ProductInfo.objects.create(product_id=product.id,
                                                   external_id=item['id'],
@@ -108,13 +109,14 @@ def do_import_task(url, request):
                                                   price=item['price'],
                                                   price_rrc=item['price_rrc'],
                                                   quantity=item['quantity'],
-                                                  shop_id=shop.id)
+                                                  shop_id=shop.id).cache()
         for name, value in item['parameters'].items():
-            parameter_object, _ = Parameter.objects.get_or_create(name=name)
+            parameter_object, _ = Parameter.objects.get_or_create(name=name).cache()
             ProductParameter.objects.create(product_info_id=product_info.id,
                                             parameter_id=parameter_object.id,
-                                            value=value)
+                                            value=value).cache()
 
+# configuring RollBar
 @task_failure.connect
 def handle_task_failure(**kw):
     rollbar.report_exc_info(extra_data=kw)

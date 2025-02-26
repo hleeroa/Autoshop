@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'django.contrib.admin',
     'jet.dashboard',
     'versatileimagefield',
+    'cacheops',
 
     'backend',
 ]
@@ -211,3 +212,25 @@ ROLLBAR = {
     'environment': 'development' if DEBUG else 'production',
     'root': BASE_DIR,
 }
+
+
+CACHEOPS_REDIS = {
+    'host': 'localhost', # redis-server is on same machine
+    'port': 6379,        # default redis port
+    'db': 1,             # SELECT non-default redis database
+                         # using separate redis db or redis instance
+                         # is highly recommended
+
+    'socket_timeout': 3,   # connection timeout in seconds, optional
+}
+
+CACHEOPS_DEFAULTS = {
+    'timeout': 60*60
+}
+CACHEOPS = {
+    'auth.*': {'ops': ('fetch', 'get')},
+    'auth.permission': {'ops': 'all'},
+    '*.*': {},
+}
+
+CACHEOPS_DEGRADE_ON_FAILURE = True
