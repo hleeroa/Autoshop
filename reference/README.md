@@ -9,6 +9,7 @@ pip install -r requirements.txt
 3. Сменить директорию, сделать миграции и запустить сервер:
 ```bash
 cd autoshop
+python manage.py makemigrations
 python manage.py migrate
 python manage.py runserver
 ```
