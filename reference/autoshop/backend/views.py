@@ -65,7 +65,7 @@ class ConfirmAccount(APIView):
         if {'email', 'token'}.issubset(request.data):
 
             token = ConfirmEmailToken.objects.filter(user__email=request.data['email'],
-                                                     key=request.data['token']).first().cache()
+                                                     key=request.data['token']).cache().first()
             if token:
                 token.user.is_active = True
                 token.user.save()
@@ -259,9 +259,9 @@ class ProductInfoView(APIView):
 
         # фильтруем и отбрасываем дубликаты
         queryset = ProductInfo.objects.filter(
-            query).select_related(
+            query).cache().select_related(
             'shop', 'product__category').prefetch_related(
-            'product_parameters__parameter').distinct().cache()
+            'product_parameters__parameter').distinct()
 
         serializer = ProductInfoSerializer(queryset, many=True, context={'request': request})
 
@@ -308,10 +308,10 @@ class BasketView(APIView):
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
         basket = Order.objects.filter(
-            user_id=request.user.id, state='basket').prefetch_related(
+            user_id=request.user.id, state='basket').cache().prefetch_related(
             'ordered_items__product_info__product__category',
             'ordered_items__product_info__product_parameters__parameter').annotate(
-            total_sum=Sum(F('ordered_items__quantity') * F('ordered_items__product_info__price'))).distinct().cache()
+            total_sum=Sum(F('ordered_items__quantity') * F('ordered_items__product_info__price'))).distinct()
 
         serializer = OrderSerializer(basket, many=True)
         return Response(serializer.data)
@@ -371,11 +371,10 @@ class BasketView(APIView):
         if items_sting:
             try:
                 items_dict = loads(items_sting)
-                print(items_dict)
             except ValueError:
                 return JsonResponse({'Status': False, 'Errors': 'Неверный формат запроса'})
             else:
-                basket, _ = Order.objects.get_or_create(user_id=request.user.id, state='basket').cache()
+                basket, _ = Order.objects.get_or_create(user_id=request.user.id, state='basket')
                 objects_created = 0
                 for order_item in items_dict:
                     order_item.update({'order': basket.id})
@@ -384,7 +383,6 @@ class BasketView(APIView):
                         try:
                             serializer.save()
                         except IntegrityError as error:
-                            print(error)
                             return JsonResponse({'Status': False, 'Errors': str(error)})
                         else:
                             objects_created += 1
@@ -437,7 +435,7 @@ class BasketView(APIView):
         items_sting = request.data.get('items')
         if items_sting:
             items_list = items_sting.split(',')
-            basket, _ = Order.objects.get_or_create(user_id=request.user.id, state='basket').cache()
+            basket, _ = Order.objects.get_or_create(user_id=request.user.id, state='basket')
             query = Q()
             objects_deleted = False
             for order_item_id in items_list:
@@ -446,7 +444,7 @@ class BasketView(APIView):
                     objects_deleted = True
 
             if objects_deleted:
-                deleted_count = OrderItem.objects.filter(query).delete()[0].cache()
+                deleted_count = OrderItem.objects.filter(query).cache().delete()[0]
                 return JsonResponse({'Status': True, 'Удалено объектов': deleted_count})
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
@@ -507,8 +505,8 @@ class BasketView(APIView):
                 objects_updated = 0
                 for order_item in items_dict:
                     if type(order_item['id']) == int and type(order_item['quantity']) == int:
-                        objects_updated += OrderItem.objects.filter(order_id=basket.id, id=order_item['id']).update(
-                            quantity=order_item['quantity']).cache()
+                        objects_updated += OrderItem.objects.filter(order_id=basket.id, id=order_item['id']).cache().update(
+                            quantity=order_item['quantity'])
 
                 return JsonResponse({'Status': True, 'Обновлено объектов': objects_updated})
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
@@ -678,8 +676,8 @@ class PartnerState(APIView):
         state = request.data.get('state')
         if state:
             try:
-                (Shop.objects.filter(user_id=request.user.id)
-                 .update(state=(lambda x: True if x == 'on' else False)(state))).cache()
+                (Shop.objects.filter(user_id=request.user.id).cache()
+                 .update(state=(lambda x: True if x == 'on' else False)(state)))
                 return JsonResponse({'Status': True})
             except ValueError as error:
                 return JsonResponse({'Status': False, 'Errors': str(error)})
@@ -727,10 +725,10 @@ class PartnerOrders(APIView):
             return JsonResponse({'Status': False, 'Error': 'Только для магазинов'}, status=403)
 
         order = Order.objects.filter(
-            ordered_items__product_info__shop__user_id=request.user.id).exclude(state='basket').prefetch_related(
+            ordered_items__product_info__shop__user_id=request.user.id).cache().exclude(state='basket').prefetch_related(
             'ordered_items__product_info__product__category',
             'ordered_items__product_info__product_parameters__parameter').select_related('contact').annotate(
-            total_sum=Sum(F('ordered_items__quantity') * F('ordered_items__product_info__price'))).distinct().cache()
+            total_sum=Sum(F('ordered_items__quantity') * F('ordered_items__product_info__price'))).distinct()
 
         serializer = OrderSerializer(order, many=True)
         return Response(serializer.data)
@@ -890,7 +888,7 @@ class ContactView(APIView):
                     objects_deleted = True
 
             if objects_deleted:
-                deleted_count = Contact.objects.filter(query).delete()[0].cache()
+                deleted_count = Contact.objects.filter(query).cache().delete()[0]
                 return JsonResponse({'Status': True, 'Удалено объектов': deleted_count})
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 

@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.admin',
     'rest_framework',
     'rest_framework.authtoken',
     'django_rest_passwordreset',
@@ -44,11 +45,11 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'drf_spectacular_sidecar',
     'jet',
-    'django.contrib.admin',
     'jet.dashboard',
     'versatileimagefield',
     'cacheops',
     'import_export',
+    'social_django',
 
     'backend',
 ]
@@ -65,6 +66,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 
     'rollbar.contrib.django.middleware.RollbarNotifierMiddleware',
+    'social_django.middleware.SocialAuthExceptionMiddleware',
 ]
 
 ROOT_URLCONF = 'autoshop.urls'
@@ -81,6 +83,8 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'social_django.context_processors.backends',
+                'social_django.context_processors.login_redirect',
             ],
         },
     },
@@ -242,3 +246,19 @@ CACHEOPS_DEGRADE_ON_FAILURE = True
 
 EXPORT_FORMATS = [YAML]
 IMPORT_EXPORT_SKIP_ADMIN_CONFIRM = True
+
+
+# TODO Добавить ключ и секрет с завершающей регистрацию приложения
+# TODO страницы. Ссылка для регистрации: https://github.com/settings/applications/new
+SOCIAL_AUTH_GITHUB_KEY = ''
+SOCIAL_AUTH_GITHUB_SECRET = ''
+
+AUTHENTICATION_BACKENDS = (
+    'social_core.backends.github.GithubOAuth2',
+    'django.contrib.auth.backends.ModelBackend',
+)
+
+SOCIAL_AUTH_USER_MODEL = 'backend.User'
+SOCIAL_AUTH_LOGIN_REDIRECT_URL = '/api/v1/user/success/'
+SOCIAL_AUTH_USERNAME_IS_FULL_EMAIL = True
+SOCIAL_AUTH_JSONFIELD_ENABLED = True

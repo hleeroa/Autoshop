@@ -53,7 +53,7 @@ def new_user_registered_task(sender: Type[User], pk, email, is_active, created: 
     """
     if created and not is_active:
         # send an e-mail to the user
-        token, _ = ConfirmEmailToken.objects.get_or_create(user_id=pk).cache()
+        token, _ = ConfirmEmailToken.objects.get_or_create(user_id=pk)
 
         msg = EmailMultiAlternatives(
             # title:

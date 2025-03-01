@@ -114,7 +114,7 @@ class User(AbstractUser):
     def image_tag(self):
         return mark_safe('<img src="%s" />' % self.image.crop['200x200'].url)
 
-    image_tag.short_description = 'Image'
+    image_tag.short_description = 'Фото профиля'
 
     def __str__(self):
         return f'{self.first_name} {self.last_name}'
