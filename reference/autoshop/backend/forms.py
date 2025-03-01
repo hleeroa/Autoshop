@@ -3,7 +3,7 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from django.http import JsonResponse
 from rest_framework.authtoken.models import Token
-from versatileimagefield.forms import SizedImageCenterpointClickDjangoAdminField
+from versatileimagefield.widgets import SizedImageCenterpointClickDjangoAdminWidget
 
 from .serializers import UserSerializer
 from .tasks import new_user_registered_task, password_reset_token_created_task
@@ -27,18 +27,28 @@ class ResetPasswordForm(forms.Form):
         )
 
 
+class CustomImageWidget(SizedImageCenterpointClickDjangoAdminWidget):
+    template_name = 'widgets/custom_image_widget.html'
+
+    def value_from_datadict(self, data, files, name):
+        # Ensure the file is correctly returned from the uploaded files
+        file_val = files.get(name)
+        if file_val:
+            return file_val
+        return super().value_from_datadict(data, files, name)
+
+
 class RegisterAccountForm(forms.ModelForm):
     """
     Форма для регистрации пользователей
     """
-    image = SizedImageCenterpointClickDjangoAdminField(required=False)
+    image = forms.ImageField(required=False, widget=CustomImageWidget)
 
     class Meta:
         model = User
         fields = ('image', 'first_name', 'last_name', 'type',
                   'position', 'company', 'email', 'password')
         labels = {
-            'image': 'Фото профиля',
             'first_name': '',
             'last_name': '',
             'type': '',
@@ -56,6 +66,12 @@ class RegisterAccountForm(forms.ModelForm):
             'company': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Компания'}),
         }
 
+    def clean_image(self):
+        image = self.cleaned_data.get('image')
+        if isinstance(image, tuple):
+            return image[0]
+        return image
+
     def send_reg_token(self):
         """
         Заносим пользователя в базу данных и отправляем письмо с токеном активации
@@ -71,11 +87,10 @@ class RegisterAccountForm(forms.ModelForm):
             # noinspection PyTypeChecker
             for item in password_error:
                 error_array.append(item)
-            raise (JsonResponse({'Status': False, 'Errors': {'password': error_array}}), 405)
+            return error_array
         else:
-            # проверяем данные для уникальности имени пользователя
-
-            user_serializer = UserSerializer(data=self.cleaned_data)
+            data = self.cleaned_data.copy()
+            user_serializer = UserSerializer(data=data)
             if user_serializer.is_valid():
                 # сохраняем пользователя
                 user = user_serializer.save()
@@ -89,10 +104,9 @@ class RegisterAccountForm(forms.ModelForm):
                     is_active=user.is_active,
                     created=True,
                 )
-                return JsonResponse({'Status': True})
+                return {'Status': True}
             else:
-                print(user_serializer.errors)
-                raise (JsonResponse({'Status': False, 'Errors': user_serializer.errors}), 403)
+                return user_serializer.errors
 
 
 class LoginAccountForm(forms.Form):

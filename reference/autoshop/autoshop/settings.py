@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/2.2/ref/settings/
 """
 
 import os
+from import_export.formats.base_formats import YAML
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -38,6 +39,8 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'django_rest_passwordreset',
 
+    'django.forms',
+
     'drf_spectacular',
     'drf_spectacular_sidecar',
     'jet',
@@ -45,9 +48,12 @@ INSTALLED_APPS = [
     'jet.dashboard',
     'versatileimagefield',
     'cacheops',
+    'import_export',
 
     'backend',
 ]
+
+FORM_RENDERER = 'django.forms.renderers.TemplatesSetting'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -218,8 +224,7 @@ CACHEOPS_REDIS = {
     'host': 'localhost', # redis-server is on same machine
     'port': 6379,        # default redis port
     'db': 1,             # SELECT non-default redis database
-                         # using separate redis db or redis instance
-                         # is highly recommended
+
 
     'socket_timeout': 3,   # connection timeout in seconds, optional
 }
@@ -232,5 +237,8 @@ CACHEOPS = {
     'auth.permission': {'ops': 'all'},
     '*.*': {},
 }
-
 CACHEOPS_DEGRADE_ON_FAILURE = True
+
+
+EXPORT_FORMATS = [YAML]
+IMPORT_EXPORT_SKIP_ADMIN_CONFIRM = True

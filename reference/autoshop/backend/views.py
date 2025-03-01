@@ -1,3 +1,4 @@
+from django.contrib import messages
 from django.views.generic import FormView, TemplateView
 from drf_spectacular.utils import OpenApiResponse, OpenApiExample, OpenApiRequest
 from drf_spectacular.utils import extend_schema, OpenApiParameter
@@ -578,7 +579,7 @@ class PartnerUpdate(APIView):
             except ValidationError as e:
                 return JsonResponse({'Status': False, 'Error': str(e)})
             else:
-                do_import_task.delay(url, request)
+                do_import_task.delay(url, request.user.id)
                 return JsonResponse({'Status': True})
 
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
@@ -1100,8 +1101,12 @@ def register_account_view(request):
     if request.method in ['POST', 'FILES']:
         form = RegisterAccountForm(request.POST, request.FILES)
         if form.is_valid():
-            form.send_reg_token()
-            return HttpResponseRedirect('login')
+            response = form.send_reg_token()
+            if response == {'Status': True}:
+                return HttpResponseRedirect('login')
+            else:
+                messages.error(request, response)
+                return HttpResponseRedirect('register')
     else:
         form = RegisterAccountForm()
     return render(request, 'register.html', {'form': form})

@@ -89,19 +89,26 @@ def new_order_task(user_id, **kwargs):
     msg.send()
 
 @shared_task()
-def do_import_task(url, request):
+def do_import_task(url, user_id):
+    """
+    Обновляем прайс партнёра
+    :param url: ссылка на страницу, содержащую yaml файл
+                (пример файла: data/shop_exmpl.yaml)
+    :param user_id: id пользователя, который обновил свои товары
+    :return:
+    """
     stream = get(url).content
 
     data = load_yaml(stream, Loader=Loader)
 
-    shop, _ = Shop.objects.get_or_create(name=data['shop'], user_id=request.user.id).cache()
+    shop, _ = Shop.objects.get_or_create(name=data['shop'], user_id=user_id)
     for category in data['categories']:
-        category_object, _ = Category.objects.get_or_create(id=category['id'], name=category['name']).cache()
+        category_object, _ = Category.objects.get_or_create(id=category['id'], name=category['name'])
         category_object.shops.add(shop.id)
         category_object.save()
-    ProductInfo.objects.filter(shop_id=shop.id).delete().cache()
+    ProductInfo.objects.filter(shop_id=shop.id).delete()
     for item in data['goods']:
-        product, _ = Product.objects.get_or_create(name=item['name'], category_id=item['category']).cache()
+        product, _ = Product.objects.get_or_create(name=item['name'], category_id=item['category'])
 
         product_info = ProductInfo.objects.create(product_id=product.id,
                                                   external_id=item['id'],
@@ -109,17 +116,17 @@ def do_import_task(url, request):
                                                   price=item['price'],
                                                   price_rrc=item['price_rrc'],
                                                   quantity=item['quantity'],
-                                                  shop_id=shop.id).cache()
+                                                  shop_id=shop.id)
         for name, value in item['parameters'].items():
-            parameter_object, _ = Parameter.objects.get_or_create(name=name).cache()
+            parameter_object, _ = Parameter.objects.get_or_create(name=name)
             ProductParameter.objects.create(product_info_id=product_info.id,
                                             parameter_id=parameter_object.id,
-                                            value=value).cache()
+                                            value=value)
 
 # configuring RollBar
 @task_failure.connect
-def handle_task_failure(**kw):
-    rollbar.report_exc_info(extra_data=kw)
+def handle_task_failure(**kwargs):
+    rollbar.report_exc_info(extra_data=kwargs)
 
 # function to test RollBar
 # it provokes an Error

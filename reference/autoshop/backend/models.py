@@ -86,7 +86,7 @@ class User(AbstractUser):
         ),
         ppoi_field='ppoi',
         blank=True,
-        null=True
+        null=True,
     )
     ppoi = PPOIField()
     company = models.CharField(verbose_name='Компания', max_length=40, blank=True)
@@ -178,7 +178,7 @@ class ProductInfo(models.Model):
         upload_to='product/',
         ppoi_field='ppoi',
         blank=True,
-        null=True
+        null=True,
     )
     ppoi = PPOIField()
     model = models.CharField(max_length=80, verbose_name='Модель', blank=True)

@@ -1,19 +1,16 @@
-shop: Связной
+shop: Barbershop
 categories:
-  - id: 224
-    name: Смартфоны
+  - id: 56
+    name: Парикмахерские услуги
 
 
 goods:
-  - id: 4216292
-    category: 224
-    model: apple/iphone/xs-max
-    name: Смартфон Apple iPhone XS Max 512GB (золотистый)
-    price: 110000
-    price_rrc: 116990
-    quantity: 14
+  - id: 1234566
+    category: 56
+    model: Bowl cut
+    name: Cool Bowl Cut
+    price: 590
+    price_rrc: 600
+    quantity: 10000000
     parameters:
-      "Диагональ (дюйм)": 6.5
-      "Разрешение (пикс)": 2688x1242
-      "Встроенная память (Гб)": 512
-      "Цвет": золотистый
+      "Buzzed part(centimeters)": 5

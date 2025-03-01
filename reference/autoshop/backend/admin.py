@@ -1,9 +1,13 @@
-from django.contrib import admin
+from django.contrib import admin, messages
+from django.urls import path, reverse
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.admin.views import main
+from django.shortcuts import render, redirect
+from django.core.files.storage import default_storage
 
 from .models import User, Shop, Category, Product, ProductInfo, Parameter, ProductParameter, Order, OrderItem, \
     Contact, ConfirmEmailToken
+from .tasks import do_import_task
 
 
 class CustomUserAdmin(UserAdmin):
@@ -13,10 +17,10 @@ class CustomUserAdmin(UserAdmin):
     def __init__(self, *args, **kwargs):
         super(CustomUserAdmin, self).__init__(*args, **kwargs)
         main.EMPTY_CHANGELIST_VALUE = '-'
-    model = User
 
+    model = User
     fieldsets = (
-        (None, {'fields': ('image', 'email', 'password', 'type', 'image_tag')}),
+        (None, {'fields': ('image', 'email', 'type', 'image_tag')}),
         ('Personal info', {'fields': ('first_name', 'last_name', 'company', 'position')}),
         ('Permissions', {
             'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions'),
@@ -35,10 +39,36 @@ class ShopAdmin(admin.ModelAdmin):
     """
     Панель управления магазинами
     """
+    change_list_template = "admin/shop_change_list.html"
     list_display = ('name', 'state')
     search_fields = ('name', 'state')
     list_filter = ('state',)
     ordering = ('name',)
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path('import-data/', self.admin_site.admin_view(self.import_data_view), name='shop_import_data'),
+        ]
+        return custom_urls + urls
+
+    def import_data_view(self, request):
+        if request.method == 'POST':
+            uploaded_file = request.FILES.get('data_file')
+            if uploaded_file:
+                have_shop = User.objects.filter(id=request.user.id).cache()[0].shop
+                if have_shop:
+                    self.message_user(request, 'One user cannot have multiple shops.', messages.ERROR)
+                else:
+                    file_path = default_storage.save('tmp/shop_import.yaml', uploaded_file)
+                    file_url = default_storage.url(file_path)
+                    # Trigger the asynchronous import task.
+                    do_import_task.delay(''.join(('http://127.0.0.1:8000', file_url)), request.user.id)
+                    self.message_user(request, 'Data import has been started.', messages.SUCCESS)
+                return redirect(reverse('admin:shop_import_data'))
+            else:
+                self.message_user(request, "No file was uploaded.", messages.ERROR)
+        return render(request, "admin/import_data_form.html")
 
 
 @admin.register(Category)
@@ -68,6 +98,7 @@ class ProductInfoAdmin(admin.ModelAdmin):
     """
     Панель управления информацией о товарах
     """
+
     list_display = ('external_id', 'product__name', 'shop__id', 'quantity', 'price')
     search_fields = ('model', 'external_id')
     list_filter = ('price', 'model', 'shop__id')
