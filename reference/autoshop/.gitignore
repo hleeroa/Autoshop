@@ -108,5 +108,4 @@ venv.bak/
 # media files
 media/
 
-# static
-static/
+
