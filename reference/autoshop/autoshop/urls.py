@@ -31,8 +31,10 @@ urlpatterns = [
     path('schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('schema/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
 
+    path("", include("social_django.urls", namespace="social")),
     path('api/v1/', include('backend.urls', namespace='backend')),
     path(r'jet/', include('jet.urls', 'jet')),
     path(r'jet/dashboard/', include('jet.dashboard.urls', 'jet-dashboard')),
-    path("", include("social_django.urls", namespace="social")),
+    path('silk/', include('silk.urls', namespace='silk')),
+
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

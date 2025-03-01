@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'cacheops',
     'import_export',
     'social_django',
+    'silk',
 
     'backend',
 ]
@@ -57,6 +58,8 @@ INSTALLED_APPS = [
 FORM_RENDERER = 'django.forms.renderers.TemplatesSetting'
 
 MIDDLEWARE = [
+    'silk.middleware.SilkyMiddleware',
+
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',

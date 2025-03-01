@@ -128,7 +128,8 @@ class LoginAccountForm(forms.Form):
         Returns:
             JsonResponse: The response indicating the status of the operation and any errors.
         """
-        user = authenticate(self.cleaned_data, username=self.cleaned_data['email'], password=self.cleaned_data['password'])
+        user = authenticate(self.cleaned_data, username=self.cleaned_data['email'],
+                            password=self.cleaned_data['password'])
 
         if user is not None:
             if user.is_active:
